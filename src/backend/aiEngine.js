@@ -1,87 +1,76 @@
 const Anthropic = require("@anthropic-ai/sdk");
-const OpenAI = require("openai");
+const OpenAI    = require("openai");
 const rateLimiter = require("./rateLimiter");
 
 class AIEngine {
   constructor() {
     this.anthropic = null;
-    this.openai = null;
+    this.openai    = null;
   }
 
-  init(claudeApiKey, openaiApiKey) {
-    if (claudeApiKey) this.anthropic = new Anthropic({ apiKey: claudeApiKey });
-    if (openaiApiKey) this.openai = new OpenAI({ apiKey: openaiApiKey });
+  init(claudeKey, openaiKey) {
+    if (claudeKey) this.anthropic = new Anthropic({ apiKey: claudeKey });
+    if (openaiKey) this.openai    = new OpenAI({ apiKey: openaiKey });
+    console.log(`[AIEngine] Initialized — Claude:${!!claudeKey} OpenAI:${!!openaiKey}`);
   }
 
-  // Main method: run a task prompt on chosen AI provider
-  async run(task, prevTaskResponse = null) {
+  // Run a task — main entry point
+  async run(task, prevResponse = null) {
     await rateLimiter.waitIfLimited();
 
-    const prompt = this.buildPrompt(task, prevTaskResponse);
-    const provider = task.ai_provider || "claude";
+    const provider = (task.ai_provider || "claude").toLowerCase();
+    const prompt   = this.buildPrompt(task, prevResponse);
 
-    console.log(`[AIEngine] Running task "${task.title}" on ${provider}`);
+    console.log(`[AIEngine] Running "${task.title}" on ${provider}`);
 
-    try {
-      if (provider === "claude") {
-        return await this.runClaude(prompt, task.ai_model);
-      } else {
-        return await this.runOpenAI(prompt, task.ai_model);
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const result = provider === "openai"
+          ? await this.runOpenAI(prompt, task.ai_model)
+          : await this.runClaude(prompt, task.ai_model);
+        return result;
+      } catch (err) {
+        const isRateLimit = err?.status === 429 || String(err?.message).includes("rate_limit");
+        if (isRateLimit && attempt < 3) {
+          const wait = RateLimiter.parseRetryAfter(err);
+          rateLimiter.hit(wait, provider);
+          await rateLimiter.waitIfLimited();
+          continue;
+        }
+        throw err;
       }
-    } catch (error) {
-      return this.handleError(error, task, prevTaskResponse, provider);
     }
   }
 
-  buildPrompt(task, prevTaskResponse) {
-    let prompt = task.prompt;
-    // If this task is linked to previous and prev response exists, inject it as context
-    if (task.use_prev_context && prevTaskResponse) {
-      prompt = `Context from previous task:\n\n${prevTaskResponse}\n\n---\n\nYour task:\n${task.prompt}`;
+  buildPrompt(task, prevResponse) {
+    if (task.use_prev_context && prevResponse) {
+      return `Context from previous task:\n\n${prevResponse}\n\n---\n\nNew task:\n${task.prompt}`;
     }
-    return prompt;
+    return task.prompt;
   }
 
   async runClaude(prompt, model = "claude-sonnet-4-20250514") {
-    if (!this.anthropic) throw new Error("Claude API key not configured");
-
-    const response = await this.anthropic.messages.create({
+    if (!this.anthropic) throw new Error("Claude API key not set. Go to Settings.");
+    const res = await this.anthropic.messages.create({
       model,
       max_tokens: 2048,
-      messages: [{ role: "user", content: prompt }]
+      messages: [{ role: "user", content: prompt }],
     });
-
-    return response.content[0].text;
+    return res.content[0].text;
   }
 
   async runOpenAI(prompt, model = "gpt-4o") {
-    if (!this.openai) throw new Error("OpenAI API key not configured");
-
-    const response = await this.openai.chat.completions.create({
+    if (!this.openai) throw new Error("OpenAI API key not set. Go to Settings.");
+    const res = await this.openai.chat.completions.create({
       model,
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 2048
+      max_tokens: 2048,
     });
-
-    return response.choices[0].message.content;
-  }
-
-  async handleError(error, task, prevTaskResponse, provider) {
-    const isRateLimit = error?.status === 429 || error?.code === "rate_limit_exceeded";
-
-    if (isRateLimit) {
-      const waitSecs = require("./rateLimiter").constructor.parseRetryAfter
-        ? require("./rateLimiter").constructor.parseRetryAfter(error)
-        : 60;
-      rateLimiter.hit(waitSecs, provider);
-      // Wait and retry once
-      await rateLimiter.waitIfLimited();
-      return this.run(task, prevTaskResponse);
-    }
-
-    console.error(`[AIEngine] Error:`, error.message);
-    throw error;
+    return res.choices[0].message.content;
   }
 }
+
+// Fix reference to class method
+const { RateLimiter } = rateLimiter.constructor ? { RateLimiter: { parseRetryAfter: (e) => { const h = e?.headers?.['retry-after']; return h ? parseInt(h) : 60; } } } : {};
 
 module.exports = new AIEngine();

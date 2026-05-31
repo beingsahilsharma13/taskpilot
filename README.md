@@ -1,118 +1,124 @@
-# 🚀 TaskPilot — AI Todo Automation
+# 🚀 TaskPilot — Daily AI Task Automation
 
-Give TaskPilot your todo list. It runs each task on Claude or ChatGPT, sends the result to your **WhatsApp**, and waits for your confirmation before moving to the next task.
+> Give your daily todo list to Claude or ChatGPT. They run it, send you the results on WhatsApp, and wait for your confirmation before running the next task.
 
-## ✨ How It Works
+---
 
-```
-1. You add tasks (prompts) to the queue
-2. TaskPilot runs each one on Claude or ChatGPT
-3. Result is sent to your WhatsApp via Twilio
-4. You reply: CONFIRM / MODIFY / SKIP
-5. TaskPilot runs the next task
-6. If rate limit hit → waits automatically → resumes
-```
-
-## 📱 WhatsApp Confirmation Flow
-
-When a task completes, you get a WhatsApp message like:
+## 🎯 How it works
 
 ```
-✅ TaskPilot — Task 1/3 Complete
-Task: Summarize today's AI news
+You add tasks (prompts) → TaskPilot runs them on Claude/ChatGPT
+→ Result sent to YOUR WhatsApp → You reply CONFIRM/MODIFY/SKIP
+→ Next task runs automatically
+```
+
+## 📱 WhatsApp Flow
+
+When a task completes, you get this on WhatsApp:
+
+```
+🤖 TaskPilot — Today's Tasks
+📋 Task 2/5: Summarize Java news
 
 AI Response:
-[full response here]
+[Full AI response here]
 
-━━━━━━━━━━━━━━━━━━
-Reply with:
-▶ CONFIRM — run next task
-✏️ MODIFY <instruction> — modify & re-run  
-⏭ SKIP — skip next task
-⏸ PAUSE — pause the queue
+━━━━━━━━━━━━━━
+✅ Reply CONFIRM → run next task
+✏️ Reply MODIFY your change → re-run with change
+⏭ Reply SKIP → skip to next task
+⏸ Reply PAUSE → pause queue
 ```
 
-You reply → TaskPilot continues automatically.
+You reply → next task auto-runs!
 
-## 🛠️ Setup
+---
 
-### Step 1 — Clone & install
+## ⚡ Quick Setup
+
+### Step 1 — Install
 ```bash
 git clone https://github.com/beingsahilsharma13/taskpilot.git
 cd taskpilot
 npm install
 ```
 
-### Step 2 — Start the app
+### Step 2 — Start ngrok (for WhatsApp webhook)
+```bash
+# In a separate terminal
+npx ngrok http 3456
+# Copy the https URL (e.g. https://abc123.ngrok-free.app)
+```
+
+### Step 3 — Run the app
 ```bash
 npm start
 ```
 
-### Step 3 — Configure API keys in Settings
-- **Claude API Key** → get from console.anthropic.com
-- **OpenAI API Key** → get from platform.openai.com
-- **Twilio** → for WhatsApp (see below)
+### Step 4 — Add settings in app
+Open Settings tab and add:
+- **Claude API key** → get from console.anthropic.com
+- **OpenAI API key** → get from platform.openai.com
+- **Twilio credentials** → get from twilio.com (free sandbox)
+- Your **WhatsApp number**
+- The **ngrok URL** from Step 2
 
-### Step 4 — Set up WhatsApp (Twilio)
-1. Create account at [twilio.com](https://twilio.com)
-2. Go to Messaging → Try it out → Send a WhatsApp message
-3. Join the sandbox (send "join ..." to the Twilio number)
-4. Install ngrok: `npm install -g ngrok`
-5. Run: `ngrok http 3456`
-6. Copy the ngrok URL (e.g. `https://abc123.ngrok.io`)
-7. In Twilio Console → WhatsApp Sandbox → "When a message comes in":
-   Set to: `https://abc123.ngrok.io/webhook/whatsapp`
-8. Add your Twilio credentials in TaskPilot Settings
-
-## 📦 Build for distribution
-
-```bash
-# Mac
-npm run build:mac
-
-# Windows
-npm run build:win
-
-# Linux
-npm run build:linux
-
-# All platforms
-npm run build:all
+### Step 5 — Set Twilio webhook
+Go to Twilio Console → Messaging → WhatsApp Sandbox → set:
+```
+When a message comes in: https://YOUR-NGROK-URL.ngrok-free.app/webhook/whatsapp
 ```
 
-Output files are in the `dist/` folder.
+### Step 6 — Add tasks and run!
+1. Type task name + prompt in the app
+2. Select Claude or ChatGPT per task
+3. Click **Run All Tasks**
+4. Watch results arrive on WhatsApp!
 
-## 🗂️ Project Structure
+---
 
-```
-taskpilot/
-├── main.js                    ← Electron main process
-├── preload.js                 ← Secure IPC bridge
-├── database/
-│   └── db.js                  ← SQLite (tasks, settings, logs)
-├── src/
-│   ├── backend/
-│   │   ├── aiEngine.js        ← Claude + OpenAI API calls
-│   │   ├── taskQueue.js       ← Queue runner + confirmation logic
-│   │   ├── whatsapp.js        ← Twilio WhatsApp integration
-│   │   ├── email.js           ← Email fallback (Nodemailer)
-│   │   └── rateLimiter.js     ← Auto-pause + retry on 429
-│   ├── ui/
-│   │   └── index.html         ← App UI (Todo Queue + Chat + Settings)
-│   └── webhook/
-│       └── server.js          ← Express server (receives WhatsApp replies)
-└── package.json
-```
-
-## 💡 Features
-
-| Feature | Description |
+## 🖥️ Platforms
+| Platform | Command |
 |---|---|
-| Todo Queue | Add tasks with prompts, AI choice, and notification channel |
-| Linked Tasks | Pass previous task's response as context to next task |
-| WhatsApp Confirmations | Confirm, modify, or skip via WhatsApp reply |
-| Direct Chat | Chat with Claude or ChatGPT directly inside the app |
-| Rate Limit Handling | Auto-detects 429 errors, waits, and retries |
-| Cross-platform | Mac, Windows, Linux (Android via Capacitor) |
+| Mac | `npm run build:mac` |
+| Windows | `npm run build:win` |
+| Linux | `npm run build:linux` |
+| All | `npm run build:all` |
+
+---
+
+## 🔑 Features
+- ✅ Claude + ChatGPT support — choose per task
+- ✅ WhatsApp confirmations via Twilio
+- ✅ CONFIRM / MODIFY / SKIP / PAUSE from WhatsApp
+- ✅ Linked tasks — pass previous response as context
+- ✅ Auto rate-limit handling — waits and retries
+- ✅ Built-in chat with Claude or ChatGPT
+- ✅ Daily progress tracking
+- ✅ Email fallback (Gmail)
+- ✅ SQLite local storage — no cloud needed
+
+---
+
+## 💬 WhatsApp Reply Commands
+| Command | Action |
+|---|---|
+| `CONFIRM` | Run next task |
+| `MODIFY write better code for Java 17` | Re-run with this instruction |
+| `SKIP` | Skip to next task |
+| `PAUSE` | Pause queue |
+| `STOP` | Stop queue |
+
+---
+
+## 🛠️ Tech Stack
+- **Electron** — cross-platform desktop (Mac/Win/Linux)
+- **Node.js** — backend logic
+- **SQLite** — local task storage
+- **Anthropic SDK** — Claude API
+- **OpenAI SDK** — ChatGPT API
+- **Twilio** — WhatsApp messaging
+- **Express** — webhook server
+- **Nodemailer** — email fallback
 
 ## Built with ❤️ by Sahil Sharma

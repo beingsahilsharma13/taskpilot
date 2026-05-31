@@ -2,497 +2,400 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>TaskPilot</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TaskPilot — Daily AI Automation</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 :root{
   --bg:#0f0f14;--surface:#16161e;--card:#1c1c26;--card2:#222230;
   --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
-  --accent:#6ee7b7;--accent2:#a78bfa;--accent3:#fbbf24;
-  --danger:#f87171;--info:#60a5fa;
+  --green:#6ee7b7;--purple:#a78bfa;--amber:#fbbf24;--red:#f87171;--blue:#60a5fa;
   --text:#e2e8f0;--muted:#64748b;--muted2:#94a3b8;
   --mono:'Space Mono',monospace;--sans:'Inter',sans-serif;
-  --r:10px;--r2:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;display:flex;flex-direction:column}
 
-/* ── TOP NAV ── */
-#topnav{height:48px;min-height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:0;-webkit-app-region:drag}
-.nav-logo{display:flex;align-items:center;gap:10px;margin-right:24px;-webkit-app-region:no-drag}
-.nav-logo-icon{width:28px;height:28px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
-.nav-logo-name{font-weight:600;font-size:14px;letter-spacing:-0.01em}
-.nav-tabs{display:flex;gap:2px;-webkit-app-region:no-drag}
-.nav-tab{padding:6px 14px;border-radius:7px;border:none;background:none;color:var(--muted);font-family:var(--sans);font-size:13px;cursor:pointer;transition:color .15s,background .15s;display:flex;align-items:center;gap:7px}
-.nav-tab:hover{color:var(--text);background:var(--card)}
-.nav-tab.active{color:var(--text);background:var(--card2)}
-.nav-tab-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px;-webkit-app-region:no-drag}
-.nav-status{font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:7px}
-.nav-status-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
-.nav-status-dot.running{background:var(--accent);animation:pulse 1.4s infinite}
-.nav-status-dot.limited{background:var(--accent3);animation:pulse .8s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.nav-btn{padding:5px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--muted2);border-radius:7px;font-family:var(--sans);font-size:12px;cursor:pointer;transition:color .15s,border-color .15s}
-.nav-btn:hover{color:var(--text);border-color:var(--border2)}
+/* ── TOP BAR ── */
+#topbar{height:48px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;-webkit-app-region:drag;flex-shrink:0}
+.tb-logo{display:flex;align-items:center;gap:8px;-webkit-app-region:no-drag}
+.tb-logo-icon{width:28px;height:28px;background:var(--green);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.tb-logo-name{font-weight:600;font-size:15px}
+.tb-logo-sub{font-size:11px;color:var(--muted)}
+.tb-spacer{flex:1}
+.tb-status{font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;-webkit-app-region:no-drag}
+.tb-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.tb-dot.green{background:var(--green);animation:pulse 2s infinite}
+.tb-dot.amber{background:var(--amber);animation:pulse 0.8s infinite}
+.tb-btn{padding:5px 12px;background:transparent;border:1px solid var(--border2);color:var(--muted2);border-radius:6px;font-size:12px;cursor:pointer;-webkit-app-region:no-drag;transition:color 0.15s,border-color 0.15s}
+.tb-btn:hover{color:var(--text);border-color:var(--border2)}
+.tb-btn.primary{background:var(--green);color:#0f0f14;border-color:var(--green);font-weight:600}
+.tb-btn.primary:hover{opacity:0.85}
+.tb-btn.danger{background:var(--red);color:white;border-color:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 
-/* ── VIEWS ── */
-#app-body{flex:1;overflow:hidden;display:flex;flex-direction:column}
-.view{display:none;flex:1;overflow:hidden;flex-direction:column}
-.view.active{display:flex}
+/* ── MAIN LAYOUT ── */
+#app{flex:1;display:flex;overflow:hidden}
 
-/* ──────────────────────────────────
-   VIEW 1: TODO BUILDER
-────────────────────────────────── */
-#view-todo{flex-direction:row}
-.todo-left{width:380px;min-width:380px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.todo-right{flex:1;overflow-y:auto;padding:28px 32px}
-.todo-right::-webkit-scrollbar{width:4px}
-.todo-right::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+/* ── LEFT PANEL ── */
+#left{width:300px;min-width:300px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.panel-head{padding:14px 16px 12px;border-bottom:1px solid var(--border)}
+.panel-title{font-size:13px;font-weight:600;color:var(--muted2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px}
 
-.panel-header{padding:20px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
-.panel-title{font-size:15px;font-weight:600;margin-bottom:3px}
-.panel-sub{font-size:12px;color:var(--muted)}
+/* Today's date pill */
+.today-pill{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;margin-bottom:10px}
+.today-label{font-size:12px;color:var(--muted)}
+.today-date{font-family:var(--mono);font-size:12px;color:var(--green)}
 
-/* Todo input form */
-.todo-form{padding:16px 20px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid var(--border)}
-.field-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px}
-.field-input{width:100%;background:var(--card);border:1px solid var(--border2);color:var(--text);padding:9px 12px;border-radius:8px;font-family:var(--sans);font-size:13px;outline:none;transition:border-color .15s}
-.field-input:focus{border-color:var(--accent2)}
-.field-input::placeholder{color:var(--muted)}
-.field-textarea{min-height:80px;resize:vertical;line-height:1.6}
-.field-row{display:flex;gap:10px}
-.field-row .field-group{flex:1}
-.field-group select.field-input{cursor:pointer}
-.field-check{display:flex;align-items:center;gap:8px;cursor:pointer}
-.field-check input{width:15px;height:15px;accent-color:var(--accent2);cursor:pointer}
-.field-check span{font-size:12px;color:var(--muted2)}
-
-.btn-add-task{width:100%;padding:10px;background:var(--accent);color:#0f0f14;border:none;border-radius:var(--r);font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:7px}
-.btn-add-task:hover{opacity:.85}
+/* Task input */
+.add-task-area{padding:10px 16px 12px;border-bottom:1px solid var(--border);background:var(--card)}
+.add-task-row{display:flex;gap:6px;margin-bottom:8px}
+.add-task-input{flex:1;background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:8px 10px;border-radius:7px;font-family:var(--sans);font-size:13px;outline:none}
+.add-task-input:focus{border-color:var(--green)}
+.add-task-input::placeholder{color:var(--muted)}
+.add-task-btn{padding:8px 12px;background:var(--green);color:#0f0f14;border:none;border-radius:7px;font-weight:600;font-size:13px;cursor:pointer}
+.add-task-selects{display:flex;gap:6px}
+select.mini-select{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--muted2);padding:5px 7px;border-radius:6px;font-size:11px;outline:none;cursor:pointer;font-family:var(--mono)}
+select.mini-select:focus{border-color:var(--border2)}
+.ctx-check{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);cursor:pointer;padding:2px 0}
+.ctx-check input{accent-color:var(--purple);width:13px;height:13px;cursor:pointer}
 
 /* Task list */
-.tasks-list-panel{flex:1;overflow-y:auto;padding:12px}
-.tasks-list-panel::-webkit-scrollbar{width:3px}
-.tasks-list-panel::-webkit-scrollbar-thumb{background:var(--border2)}
-.no-tasks{padding:32px 16px;text-align:center;color:var(--muted);font-size:13px}
+.tasks-list{flex:1;overflow-y:auto;padding:8px}
+.tasks-list::-webkit-scrollbar{width:3px}
+.tasks-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
-.task-pill{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:11px;transition:border-color .2s;cursor:grab}
-.task-pill:hover{border-color:var(--border2)}
-.task-pill.running{border-color:var(--accent)!important}
-.task-pill.waiting_confirm{border-color:var(--accent3)!important}
-.task-pill.done{opacity:.55}
-.task-pill.failed{border-color:var(--danger)!important}
-.task-num-badge{width:22px;height:22px;border-radius:5px;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--muted);flex-shrink:0;margin-top:1px}
-.task-pill-info{flex:1;min-width:0}
-.task-pill-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
-.task-pill-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.pill-badge{padding:2px 7px;border-radius:4px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.05em}
-.pb-claude{background:rgba(110,231,183,.12);color:var(--accent)}
-.pb-openai{background:rgba(167,139,250,.12);color:var(--accent2)}
-.pb-running{background:rgba(110,231,183,.12);color:var(--accent);animation:pulse 1.4s infinite}
-.pb-waiting{background:rgba(251,191,36,.12);color:var(--accent3)}
-.pb-done{background:rgba(167,139,250,.12);color:var(--accent2)}
-.pb-failed{background:rgba(248,113,113,.12);color:var(--danger)}
-.pb-skipped{background:rgba(100,116,139,.12);color:var(--muted2)}
-.pb-whatsapp{background:rgba(110,231,183,.08);color:var(--accent)}
-.pb-email{background:rgba(96,165,250,.08);color:var(--info)}
-.pb-linked{background:rgba(251,191,36,.08);color:var(--accent3)}
-.task-pill-del{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 5px;border-radius:4px;font-size:13px;transition:color .15s;flex-shrink:0}
-.task-pill-del:hover{color:var(--danger)}
+.task-item{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;cursor:default;transition:border-color 0.2s;position:relative}
+.task-item.active  {border-color:var(--green);background:rgba(110,231,183,0.04)}
+.task-item.waiting {border-color:var(--amber)}
+.task-item.done    {opacity:0.5}
+.task-item.failed  {border-color:var(--red)}
+.task-item.skipped {opacity:0.35}
+.task-row1{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.task-num{width:20px;height:20px;border-radius:5px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--muted);flex-shrink:0}
+.task-name{flex:1;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task-status-icon{font-size:14px;flex-shrink:0}
+.task-meta{display:flex;gap:6px;align-items:center}
+.pill{padding:2px 7px;border-radius:4px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.05em}
+.pill.claude {background:rgba(110,231,183,0.12);color:var(--green)}
+.pill.openai {background:rgba(167,139,250,0.12);color:var(--purple)}
+.pill.linked {background:rgba(96,165,250,0.12);color:var(--blue)}
+.task-del{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;opacity:0;padding:2px 4px;border-radius:4px}
+.task-item:hover .task-del{opacity:1}
+.task-del:hover{color:var(--red)}
 
-/* Queue control bar */
-.todo-right-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
-.queue-title{font-size:20px;font-weight:600;letter-spacing:-.02em}
-.queue-subtitle{font-size:13px;color:var(--muted);margin-top:3px}
-.queue-btns{display:flex;gap:8px}
-.qbtn{padding:9px 18px;border-radius:var(--r);border:none;font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:7px;transition:opacity .15s}
-.qbtn:hover{opacity:.85}
-.qbtn-run{background:var(--accent);color:#0f0f14}
-.qbtn-pause{background:var(--accent3);color:#0f0f14}
-.qbtn-stop{background:var(--danger);color:#fff}
-.qbtn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--border2)}
+/* Bottom run bar */
+.run-bar{padding:12px 16px;border-top:1px solid var(--border);background:var(--surface)}
+.run-progress{height:3px;background:var(--border2);border-radius:2px;margin-bottom:10px;overflow:hidden}
+.run-progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width 0.4s ease;width:0%}
+.run-btns{display:flex;gap:8px}
+.run-btn{flex:1;padding:9px;border:none;border-radius:8px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:opacity 0.15s,transform 0.1s}
+.run-btn:active{transform:scale(0.97)}
+.run-btn.go{background:var(--green);color:#0f0f14}
+.run-btn.pause{background:var(--amber);color:#0f0f14}
+.run-btn.stop{background:var(--red);color:white}
+.run-btn.resume{background:var(--blue);color:white}
+.run-btn:hover{opacity:0.85}
+.run-btn:disabled{opacity:0.3;cursor:not-allowed}
 
-/* Task response card */
-.response-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:20px;margin-bottom:14px;transition:border-color .2s}
-.response-card.waiting{border-color:var(--accent3)}
-.rc-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
-.rc-num{width:28px;height:28px;border-radius:7px;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0}
-.rc-title{font-size:15px;font-weight:600;flex:1}
-.rc-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
-.rc-prompt{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px 13px;font-size:12px;color:var(--muted2);line-height:1.65;margin-bottom:14px}
-.rc-response{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:14px;font-size:13px;line-height:1.75;white-space:pre-wrap;color:var(--text);max-height:220px;overflow-y:auto;margin-bottom:14px}
-.rc-response::-webkit-scrollbar{width:3px}
-.rc-response::-webkit-scrollbar-thumb{background:var(--border2)}
+/* ── RIGHT PANEL ── */
+#right{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.right-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.tab{padding:11px 20px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color 0.15s;white-space:nowrap}
+.tab.active{color:var(--text);border-bottom-color:var(--green)}
+.tab:hover:not(.active){color:var(--muted2)}
+.right-content{flex:1;overflow:hidden;display:flex;flex-direction:column}
 
-/* Confirm bar */
-.confirm-bar{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);border-radius:9px;padding:14px 16px}
-.confirm-bar-label{font-family:var(--mono);font-size:10px;color:var(--accent3);letter-spacing:.12em;margin-bottom:11px}
-.confirm-actions{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-.cbtn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s}
-.cbtn:hover{opacity:.8}
-.cbtn-confirm{background:rgba(110,231,183,.15);color:var(--accent);border:1px solid rgba(110,231,183,.3)}
-.cbtn-skip{background:rgba(251,191,36,.15);color:var(--accent3);border:1px solid rgba(251,191,36,.3)}
-.modify-row{display:flex;gap:8px}
-.modify-input{flex:1;background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:9px 12px;border-radius:8px;font-family:var(--sans);font-size:13px;outline:none}
-.modify-input:focus{border-color:var(--accent2)}
-.modify-input::placeholder{color:var(--muted)}
-.cbtn-modify{background:rgba(167,139,250,.15);color:var(--accent2);border:1px solid rgba(167,139,250,.3);padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+/* ── ACTIVITY FEED ── */
+#feed-panel{flex:1;overflow-y:auto;padding:16px}
+#feed-panel::-webkit-scrollbar{width:3px}
+#feed-panel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.feed-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted)}
+.feed-empty-icon{font-size:40px;opacity:0.25}
+.feed-empty-title{font-size:15px;color:var(--muted2)}
+.feed-event{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}
+.feed-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.feed-icon.green{background:rgba(110,231,183,0.12)}
+.feed-icon.amber{background:rgba(251,191,36,0.12)}
+.feed-icon.red  {background:rgba(248,113,113,0.12)}
+.feed-icon.blue {background:rgba(96,165,250,0.12)}
+.feed-icon.purple{background:rgba(167,139,250,0.12)}
+.feed-body{flex:1;min-width:0}
+.feed-title{font-size:13px;font-weight:500;margin-bottom:3px}
+.feed-time{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px}
+.feed-response{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:12px;line-height:1.7;color:var(--muted2);max-height:160px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+.feed-response::-webkit-scrollbar{width:2px}
+.feed-response::-webkit-scrollbar-thumb{background:var(--border2)}
 
-/* Rate limit banner */
-.rate-banner{background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.rate-banner-icon{font-size:18px}
-.rate-banner-text{font-size:13px;color:var(--accent3)}
-.rate-banner-timer{font-family:var(--mono);font-size:13px;color:var(--accent3);margin-left:auto}
+/* ── CONFIRM BANNER ── */
+#confirm-banner{margin:0 16px 16px;background:var(--card2);border:1px solid var(--amber);border-radius:10px;padding:14px 16px;flex-shrink:0;display:none}
+.cb-label{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:0.1em;margin-bottom:10px}
+.cb-task{font-size:13px;font-weight:500;margin-bottom:12px}
+.cb-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.cb-btn{padding:7px 16px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity 0.15s}
+.cb-btn:hover{opacity:0.85}
+.cb-confirm{background:var(--green);color:#0f0f14}
+.cb-skip   {background:rgba(251,191,36,0.2);color:var(--amber);border:1px solid var(--amber) !important}
+.cb-pause  {background:rgba(96,165,250,0.15);color:var(--blue);border:1px solid var(--blue) !important}
+.cb-modify-row{display:flex;gap:8px}
+.cb-modify-input{flex:1;background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:7px;font-family:var(--sans);font-size:13px;outline:none}
+.cb-modify-input:focus{border-color:var(--purple)}
+.cb-modify-input::placeholder{color:var(--muted)}
+.cb-modify-send{padding:8px 14px;background:var(--purple);color:white;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
 
-/* ──────────────────────────────────
-   VIEW 2: DIRECT CHAT
-────────────────────────────────── */
-#view-chat{flex-direction:row}
-.chat-sidebar{width:200px;min-width:200px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column}
-.chat-sidebar-head{padding:16px 14px 10px;border-bottom:1px solid var(--border)}
-.chat-sidebar-title{font-size:11px;font-weight:500;color:var(--muted);letter-spacing:.08em}
-.ai-btn{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background .12s;color:var(--text)}
-.ai-btn:hover{background:var(--card)}
-.ai-btn.active{background:var(--card2);box-shadow:inset 2px 0 0 var(--accent)}
-.ai-btn.active.gpt{box-shadow:inset 2px 0 0 var(--accent2)}
-.ai-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.ai-btn-name{font-size:13px;font-weight:500}
-.ai-btn-sub{font-size:11px;color:var(--muted);margin-top:1px}
-.chat-history-section{padding:10px 14px 6px;border-top:1px solid var(--border);margin-top:8px}
-.chat-history-label{font-size:10px;font-family:var(--mono);color:var(--muted);letter-spacing:.1em;margin-bottom:7px}
-.chat-history-item{font-size:11px;color:var(--muted);padding:4px 6px;border-radius:5px;cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:background .12s}
-.chat-history-item:hover{background:var(--card);color:var(--muted2)}
-.chat-sidebar-footer{margin-top:auto;padding:12px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);line-height:1.55}
-
-.chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.chat-topbar{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
-.chat-topbar-dot{width:9px;height:9px;border-radius:50%}
-.chat-topbar-name{font-size:14px;font-weight:600}
-.chat-topbar-model{font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:4px}
-.chat-clear{margin-left:auto;padding:5px 12px;background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;font-size:11px;cursor:pointer;transition:color .15s,border-color .15s}
-.chat-clear:hover{color:var(--text);border-color:var(--border2)}
-
-.chat-messages{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+/* ── CHAT PANEL ── */
+#chat-panel{flex:1;display:none;flex-direction:column;overflow:hidden}
+.chat-ai-switch{display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ai-switch-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s}
+.ai-switch-btn.active.claude{background:rgba(110,231,183,0.1);color:var(--green);border-color:rgba(110,231,183,0.3)}
+.ai-switch-btn.active.openai{background:rgba(167,139,250,0.1);color:var(--purple);border-color:rgba(167,139,250,0.3)}
+.ai-switch-dot{width:8px;height:8px;border-radius:50%}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
 .chat-messages::-webkit-scrollbar{width:3px}
-.chat-messages::-webkit-scrollbar-thumb{background:var(--border2)}
-.chat-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);padding:40px 20px}
-.chat-empty-icon{font-size:36px;opacity:.3}
-.chat-empty-title{font-size:14px;color:var(--muted2);font-weight:500}
-.chat-empty-chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:6px}
-.chip{font-size:12px;padding:5px 12px;border:1px solid var(--border2);border-radius:99px;cursor:pointer;color:var(--muted2);background:none;transition:background .12s,border-color .12s}
-.chip:hover{background:var(--card);border-color:var(--border2)}
-
-.msg{display:flex;gap:10px;align-items:flex-start}
-.msg.user{flex-direction:row-reverse}
-.msg-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;border:1px solid var(--border2)}
-.msg-av.user{background:rgba(110,231,183,.15);color:var(--accent)}
-.msg-av.ai-claude{background:rgba(110,231,183,.1);color:var(--accent)}
-.msg-av.ai-openai{background:rgba(167,139,250,.1);color:var(--accent2)}
-.msg-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.7;max-width:82%;word-break:break-word}
-.msg.user .msg-bubble{background:rgba(110,231,183,.12);color:var(--text);border:1px solid rgba(110,231,183,.15);border-radius:12px 4px 12px 12px}
-.msg.ai .msg-bubble{background:var(--card);border:1px solid var(--border2);border-radius:4px 12px 12px 12px}
-.msg-typing{display:flex;align-items:center;gap:4px;padding:12px 14px}
-.msg-typing span{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bounce 1.2s infinite}
-.msg-typing span:nth-child(2){animation-delay:.2s}
-.msg-typing span:nth-child(3){animation-delay:.4s}
-@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
-.add-to-task-btn{display:inline-block;margin-top:8px;font-size:11px;padding:3px 10px;background:none;border:1px solid var(--border2);color:var(--muted);border-radius:5px;cursor:pointer;transition:color .15s}
-.add-to-task-btn:hover{color:var(--accent);border-color:rgba(110,231,183,.3)}
-
-.chat-inputbar{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:9px;align-items:flex-end;flex-shrink:0}
-.chat-input{flex:1;resize:none;background:var(--card);border:1px solid var(--border2);color:var(--text);padding:10px 13px;border-radius:10px;font-family:var(--sans);font-size:13px;min-height:40px;max-height:120px;outline:none;transition:border-color .15s;line-height:1.5}
-.chat-input:focus{border-color:var(--accent2)}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.chat-msg{display:flex;gap:10px;align-items:flex-start}
+.chat-msg.user{flex-direction:row-reverse}
+.msg-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;border:1px solid var(--border)}
+.msg-bub{padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.65;max-width:82%;word-break:break-word}
+.chat-msg.user .msg-bub{background:rgba(110,231,183,0.12);color:var(--green);border:1px solid rgba(110,231,183,0.2);border-radius:12px 3px 12px 12px}
+.chat-msg.ai   .msg-bub{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:3px 12px 12px 12px}
+.typing-dots{display:flex;gap:4px;padding:10px 14px;align-items:center}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:tdot 1.2s infinite}
+.typing-dots span:nth-child(2){animation-delay:0.2s}
+.typing-dots span:nth-child(3){animation-delay:0.4s}
+@keyframes tdot{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+.chat-inputbar{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+.chat-input{flex:1;background:var(--card);border:1px solid var(--border2);color:var(--text);padding:9px 12px;border-radius:8px;font-family:var(--sans);font-size:13px;outline:none;resize:none;min-height:38px;max-height:100px}
+.chat-input:focus{border-color:var(--green)}
 .chat-input::placeholder{color:var(--muted)}
-.chat-send{width:38px;height:38px;background:var(--accent);color:#0f0f14;border:none;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s;font-size:16px}
-.chat-send:hover{opacity:.85}
-.chat-send:disabled{opacity:.3;cursor:default}
+.chat-send{width:36px;height:36px;background:var(--green);color:#0f0f14;border:none;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:opacity 0.15s}
+.chat-send:hover{opacity:0.85}
+.chat-send:disabled{opacity:0.3;cursor:not-allowed}
 
-/* ──────────────────────────────────
-   VIEW 3: SETTINGS
-────────────────────────────────── */
-#view-settings{overflow-y:auto;padding:28px 32px}
-.settings-wrap{max-width:620px;margin:0 auto}
-.settings-title{font-size:18px;font-weight:600;margin-bottom:6px}
-.settings-sub{font-size:13px;color:var(--muted);margin-bottom:28px}
-.settings-section{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:20px;margin-bottom:14px}
-.settings-section-title{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:9px}
-.settings-tag{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(110,231,183,.1);color:var(--accent)}
-.settings-tag.optional{background:rgba(100,116,139,.1);color:var(--muted2)}
-.webhook-box{font-family:var(--mono);font-size:11px;background:var(--surface);padding:10px 13px;border-radius:7px;border:1px solid var(--border);color:var(--accent3);word-break:break-all;line-height:1.6}
-.settings-hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6}
-.settings-hint code{background:var(--surface);padding:1px 6px;border-radius:4px;font-family:var(--mono);color:var(--muted2)}
-.save-row{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
-
-/* ── MODALS ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
-.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:24px;width:100%;max-width:460px}
-.modal h2{font-size:16px;font-weight:600;margin-bottom:18px}
-.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+/* ── SETTINGS PANEL ── */
+#settings-panel{flex:1;overflow-y:auto;padding:20px;display:none}
+.settings-wrap{max-width:560px;margin:0 auto}
+.s-section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px}
+.s-section-title{font-size:12px;font-weight:600;color:var(--muted2);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.s-badge{padding:2px 8px;background:rgba(110,231,183,0.1);color:var(--green);border-radius:4px;font-size:10px;text-transform:uppercase}
+.s-row{margin-bottom:12px}
+.s-label{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:0.07em;margin-bottom:5px;display:block;text-transform:uppercase}
+.s-input{width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:9px 12px;border-radius:7px;font-size:13px;outline:none}
+.s-input:focus{border-color:var(--green)}
+.s-input::placeholder{color:var(--muted)}
+.s-two{display:flex;gap:10px}
+.s-two .s-row{flex:1}
+.s-webhook{background:var(--surface);border:1px solid var(--border);padding:10px 12px;border-radius:7px;font-family:var(--mono);font-size:11px;color:var(--amber);word-break:break-all}
+.s-hint{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5}
+.s-hint code{background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--muted2)}
+.s-save-btn{width:100%;padding:10px;background:var(--green);color:#0f0f14;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:4px}
+.s-save-btn:hover{opacity:0.85}
 
 /* ── TOAST ── */
-.toast{position:fixed;bottom:20px;right:20px;background:var(--card2);border:1px solid var(--border2);padding:11px 18px;border-radius:var(--r);font-size:13px;z-index:300;animation:slideUp .25s ease;max-width:300px}
-.toast.ok{border-color:rgba(110,231,183,.3);color:var(--accent)}
-.toast.err{border-color:rgba(248,113,113,.3);color:var(--danger)}
-.toast.info{border-color:rgba(251,191,36,.3);color:var(--accent3)}
-@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;background:var(--card);border:1px solid var(--border2);border-radius:8px;font-size:13px;z-index:999;animation:fadeIn 0.25s;max-width:280px}
+.toast.ok {border-color:rgba(110,231,183,0.3);color:var(--green)}
+.toast.err{border-color:rgba(248,113,113,0.3);color:var(--red)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-/* whatsapp indicator */
-.wa-indicator{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);background:rgba(110,231,183,.07);border:1px solid rgba(110,231,183,.15);padding:4px 10px;border-radius:99px;margin-bottom:18px}
-.wa-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:22px;width:100%;max-width:460px}
+.modal h2{font-size:16px;font-weight:600;margin-bottom:18px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.m-cancel{padding:8px 16px;background:none;border:1px solid var(--border2);color:var(--muted2);border-radius:7px;font-size:13px;cursor:pointer}
+.m-ok{padding:8px 16px;background:var(--green);color:#0f0f14;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
+.m-ok:hover,.m-cancel:hover{opacity:0.85}
 </style>
 </head>
 <body>
 
-<!-- TOP NAV -->
-<div id="topnav">
-  <div class="nav-logo">
-    <div class="nav-logo-icon">🚀</div>
-    <div class="nav-logo-name">TaskPilot</div>
-  </div>
-  <div class="nav-tabs">
-    <button class="nav-tab active" id="tab-todo" onclick="switchView('todo')">
-      <div class="nav-tab-dot" style="background:var(--accent)"></div>
-      Todo Queue
-    </button>
-    <button class="nav-tab" id="tab-chat" onclick="switchView('chat')">
-      <div class="nav-tab-dot" style="background:var(--accent2)"></div>
-      Chat
-    </button>
-    <button class="nav-tab" id="tab-settings" onclick="switchView('settings')">
-      ⚙ Settings
-    </button>
-  </div>
-  <div class="nav-right">
-    <div class="nav-status">
-      <div class="nav-status-dot" id="nav-dot"></div>
-      <span id="nav-status-text">Idle</span>
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="tb-logo">
+    <div class="tb-logo-icon">🚀</div>
+    <div>
+      <span class="tb-logo-name">TaskPilot</span>
+      <span class="tb-logo-sub" style="margin-left:6px">Daily AI Automation</span>
     </div>
-    <span id="rate-badge" style="display:none;font-family:var(--mono);font-size:11px;color:var(--accent3);background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);padding:3px 9px;border-radius:5px">⏳ Rate limited</span>
   </div>
+  <div class="tb-spacer"></div>
+  <div class="tb-status">
+    <div class="tb-dot" id="tb-dot"></div>
+    <span id="tb-status-text">Ready</span>
+  </div>
+  <button class="tb-btn" onclick="showTab('settings')">⚙ Settings</button>
 </div>
 
-<!-- APP BODY -->
-<div id="app-body">
+<!-- MAIN APP -->
+<div id="app">
 
-  <!-- VIEW: TODO QUEUE -->
-  <div class="view active" id="view-todo">
-    <!-- LEFT: Task builder -->
-    <div class="todo-left">
-      <div class="panel-header">
-        <div class="panel-title">Add Task</div>
-        <div class="panel-sub">Build your todo list for today</div>
-      </div>
-      <div class="todo-form">
-        <div class="field-group">
-          <div class="field-label">Task Title</div>
-          <input class="field-input" id="f-title" placeholder="e.g. Summarize today's news"/>
-        </div>
-        <div class="field-group">
-          <div class="field-label">AI Prompt</div>
-          <textarea class="field-input field-textarea" id="f-prompt" placeholder="What should the AI do? Be specific..."></textarea>
-        </div>
-        <div class="field-row">
-          <div class="field-group">
-            <div class="field-label">AI Model</div>
-            <select class="field-input" id="f-provider">
-              <option value="claude">Claude (Anthropic)</option>
-              <option value="openai">ChatGPT (OpenAI)</option>
-            </select>
-          </div>
-          <div class="field-group">
-            <div class="field-label">Notify via</div>
-            <select class="field-input" id="f-channel">
-              <option value="whatsapp">WhatsApp ✅</option>
-              <option value="email">Email</option>
-            </select>
-          </div>
-        </div>
-        <label class="field-check">
-          <input type="checkbox" id="f-context"/>
-          <span>🔗 Use previous task's response as context</span>
-        </label>
-        <button class="btn-add-task" onclick="addTask()">＋ Add to Queue</button>
-      </div>
-      <div class="tasks-list-panel" id="tasks-list">
-        <div class="no-tasks">No tasks yet — add your first task above ↑</div>
+  <!-- LEFT: Daily todo list -->
+  <div id="left">
+    <div class="panel-head">
+      <div class="panel-title">Today's Tasks</div>
+      <div class="today-pill">
+        <span class="today-label">📅</span>
+        <span class="today-date" id="today-date"></span>
       </div>
     </div>
 
-    <!-- RIGHT: Queue runner -->
-    <div class="todo-right" id="todo-right">
-      <div class="todo-right-header">
-        <div>
-          <div class="queue-title">Today's Queue</div>
-          <div class="queue-subtitle" id="queue-subtitle">0 tasks ready to run</div>
-        </div>
-        <div class="queue-btns" id="queue-btns">
-          <button class="qbtn qbtn-run" onclick="startQueue()">▶ Run All</button>
-        </div>
+    <!-- Add task form -->
+    <div class="add-task-area">
+      <div class="add-task-row">
+        <input class="add-task-input" id="new-task-title" placeholder="Task name..." onkeydown="if(event.key==='Enter')focusPrompt()"/>
+        <button class="add-task-btn" onclick="openAddModal()">+</button>
       </div>
-
-      <div id="wa-strip" class="wa-indicator" style="display:none">
-        <div class="wa-dot"></div>
-        Waiting for WhatsApp confirmation...
+      <div class="add-task-selects">
+        <select class="mini-select" id="quick-provider">
+          <option value="claude">Claude</option>
+          <option value="openai">ChatGPT</option>
+        </select>
+        <select class="mini-select" id="quick-channel">
+          <option value="whatsapp">WhatsApp</option>
+          <option value="email">Email</option>
+        </select>
       </div>
+    </div>
 
-      <div id="rate-banner" style="display:none" class="rate-banner">
-        <div class="rate-banner-icon">⏳</div>
-        <div class="rate-banner-text">Rate limit hit — paused. Waiting for token reset...</div>
-        <div class="rate-banner-timer" id="rate-timer"></div>
+    <!-- Task list -->
+    <div class="tasks-list" id="tasks-list">
+      <div style="padding:40px 16px;text-align:center;color:var(--muted)">
+        <div style="font-size:28px;margin-bottom:8px;opacity:0.3">📝</div>
+        <div style="font-size:12px">Add your first task above</div>
       </div>
+    </div>
 
-      <div id="response-cards">
-        <div style="text-align:center;padding:60px 20px;color:var(--muted)">
-          <div style="font-size:40px;margin-bottom:14px;opacity:.2">📋</div>
-          <div style="font-size:14px">Add tasks on the left and press <strong style="color:var(--muted2)">Run All</strong> to start</div>
-        </div>
+    <!-- Run controls -->
+    <div class="run-bar">
+      <div class="run-progress"><div class="run-progress-fill" id="progress-fill"></div></div>
+      <div class="run-btns" id="run-btns">
+        <button class="run-btn go" id="btn-run" onclick="startQueue()">▶ Run All Tasks</button>
       </div>
     </div>
   </div>
 
-  <!-- VIEW: DIRECT CHAT -->
-  <div class="view" id="view-chat">
-    <div class="chat-sidebar">
-      <div class="chat-sidebar-head">
-        <div class="chat-sidebar-title">AI Models</div>
-      </div>
-      <button class="ai-btn active" id="ai-claude-btn" onclick="switchAI('claude')">
-        <div class="ai-dot" style="background:var(--accent)"></div>
-        <div>
-          <div class="ai-btn-name">Claude</div>
-          <div class="ai-btn-sub">Anthropic</div>
-        </div>
-      </button>
-      <button class="ai-btn" id="ai-openai-btn" onclick="switchAI('openai')">
-        <div class="ai-dot" style="background:var(--accent2)"></div>
-        <div>
-          <div class="ai-btn-name">ChatGPT</div>
-          <div class="ai-btn-sub">OpenAI</div>
-        </div>
-      </button>
-      <div class="chat-history-section">
-        <div class="chat-history-label">Recent</div>
-        <div id="chat-history-list"></div>
-      </div>
-      <div class="chat-sidebar-footer">
-        Claude is live. Add OpenAI key in Settings to use ChatGPT.
-      </div>
+  <!-- RIGHT -->
+  <div id="right">
+    <div class="right-tabs">
+      <div class="tab active" id="tab-activity" onclick="showTab('activity')">Activity</div>
+      <div class="tab" id="tab-chat"     onclick="showTab('chat')">Chat with AI</div>
+      <div class="tab" id="tab-settings" onclick="showTab('settings')">Settings</div>
     </div>
-    <div class="chat-main">
-      <div class="chat-topbar">
-        <div class="chat-topbar-dot" id="chat-dot" style="background:var(--accent)"></div>
-        <div>
-          <span class="chat-topbar-name" id="chat-ai-name">Claude</span>
-          <span class="chat-topbar-model" id="chat-ai-model">claude-sonnet-4-20250514</span>
-        </div>
-        <button class="chat-clear" onclick="clearChat()">Clear chat</button>
-      </div>
-      <div class="chat-messages" id="chat-messages">
-        <div class="chat-empty" id="chat-empty">
-          <div class="chat-empty-icon">🤖</div>
-          <div class="chat-empty-title">Chat with Claude or ChatGPT</div>
-          <div style="font-size:12px;color:var(--muted);text-align:center">Type anything — ask questions, brainstorm, write code</div>
-          <div class="chat-empty-chips">
-            <button class="chip" onclick="chipSend('Explain Java HashMap vs LinkedHashMap')">HashMap internals</button>
-            <button class="chip" onclick="chipSend('Write a Spring Boot Kafka consumer')">Kafka consumer</button>
-            <button class="chip" onclick="chipSend('What is Redis TTL and how does it work?')">Redis TTL</button>
-            <button class="chip" onclick="chipSend('Explain microservices vs monolith')">Microservices</button>
+
+    <div class="right-content">
+
+      <!-- ── ACTIVITY FEED ── -->
+      <div id="activity-panel" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+        <!-- Confirm banner -->
+        <div id="confirm-banner">
+          <div class="cb-label">⏳ WAITING FOR YOUR CONFIRMATION</div>
+          <div class="cb-task" id="cb-task-name">—</div>
+          <div class="cb-btns">
+            <button class="cb-btn cb-confirm" onclick="sendConfirm('confirm')">✅ CONFIRM — run next</button>
+            <button class="cb-btn cb-skip"    onclick="sendConfirm('skip')">⏭ SKIP</button>
+            <button class="cb-btn cb-pause"   onclick="sendConfirm('pause')">⏸ PAUSE</button>
+          </div>
+          <div class="cb-modify-row">
+            <input class="cb-modify-input" id="modify-input" placeholder="Or type MODIFY instruction and send…"/>
+            <button class="cb-modify-send" onclick="sendModify()">✏️ MODIFY</button>
           </div>
         </div>
-      </div>
-      <div class="chat-inputbar">
-        <textarea class="chat-input" id="chat-input" placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
-          onkeydown="chatKey(event)" oninput="chatResize(this)"></textarea>
-        <button class="chat-send" id="chat-send-btn" onclick="chatSend()" aria-label="Send">➤</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- VIEW: SETTINGS -->
-  <div class="view" id="view-settings">
-    <div class="settings-wrap">
-      <div class="settings-title">Settings & API Keys</div>
-      <div class="settings-sub">Configure your AI providers and notification channels below.</div>
-
-      <div class="settings-section">
-        <div class="settings-section-title">AI Providers <span class="settings-tag">Required</span></div>
-        <div class="field-group" style="margin-bottom:12px">
-          <div class="field-label">Claude API Key (Anthropic)</div>
-          <input class="field-input" type="password" id="s-claudeApiKey" placeholder="sk-ant-api..."/>
-        </div>
-        <div class="field-group">
-          <div class="field-label">OpenAI API Key</div>
-          <input class="field-input" type="password" id="s-openaiApiKey" placeholder="sk-proj-..."/>
+        <div id="feed-panel">
+          <div class="feed-empty" id="feed-empty">
+            <div class="feed-empty-icon">🤖</div>
+            <div class="feed-empty-title">No activity yet</div>
+            <div style="font-size:12px;color:var(--muted);text-align:center;max-width:240px;line-height:1.6">Add tasks on the left, click Run — results will appear here and be sent to your WhatsApp.</div>
+          </div>
         </div>
       </div>
 
-      <div class="settings-section">
-        <div class="settings-section-title">WhatsApp via Twilio <span class="settings-tag">Recommended</span></div>
-        <div class="field-row" style="margin-bottom:12px">
-          <div class="field-group">
-            <div class="field-label">Account SID</div>
-            <input class="field-input" id="s-twilioSid" placeholder="ACxxxxxxxxxxxxxxx"/>
-          </div>
-          <div class="field-group">
-            <div class="field-label">Auth Token</div>
-            <input class="field-input" type="password" id="s-twilioToken" placeholder="Token"/>
-          </div>
+      <!-- ── CHAT ── -->
+      <div id="chat-panel">
+        <div class="chat-ai-switch">
+          <button class="ai-switch-btn active claude" id="chat-claude-btn" onclick="switchChatAI('claude')">
+            <span class="ai-switch-dot" style="background:var(--green)"></span> Claude
+          </button>
+          <button class="ai-switch-btn openai" id="chat-openai-btn" onclick="switchChatAI('openai')">
+            <span class="ai-switch-dot" style="background:var(--purple)"></span> ChatGPT
+          </button>
         </div>
-        <div class="field-row" style="margin-bottom:12px">
-          <div class="field-group">
-            <div class="field-label">From (Twilio Sandbox Number)</div>
-            <input class="field-input" id="s-twilioFrom" placeholder="whatsapp:+14155238886"/>
-          </div>
-          <div class="field-group">
-            <div class="field-label">Your WhatsApp Number</div>
-            <input class="field-input" id="s-whatsappTo" placeholder="whatsapp:+919876543210"/>
-          </div>
-        </div>
-        <div class="field-label" style="margin-bottom:6px">Webhook URL (paste this in Twilio → WhatsApp Sandbox settings)</div>
-        <div class="webhook-box">http://YOUR_NGROK_URL/webhook/whatsapp</div>
-        <div class="settings-hint">Run <code>ngrok http 3456</code> to get a public URL, then paste it in Twilio console under WhatsApp Sandbox → "When a message comes in"</div>
-      </div>
-
-      <div class="settings-section">
-        <div class="settings-section-title">Email Fallback <span class="settings-tag optional">Optional</span></div>
-        <div class="field-row">
-          <div class="field-group">
-            <div class="field-label">Gmail Address</div>
-            <input class="field-input" id="s-gmailUser" placeholder="you@gmail.com"/>
-          </div>
-          <div class="field-group">
-            <div class="field-label">Gmail App Password</div>
-            <input class="field-input" type="password" id="s-gmailPass" placeholder="App password (not login password)"/>
-          </div>
-        </div>
-        <div class="field-group" style="margin-top:12px">
-          <div class="field-label">Send to Email</div>
-          <input class="field-input" id="s-emailTo" placeholder="recipient@email.com"/>
+        <div class="chat-messages" id="chat-msgs"></div>
+        <div class="chat-inputbar">
+          <textarea class="chat-input" id="chat-input" placeholder="Ask Claude or ChatGPT anything…" rows="1" onkeydown="chatKey(event)" oninput="chatResize(this)"></textarea>
+          <button class="chat-send" id="chat-send" onclick="chatSend()">↑</button>
         </div>
       </div>
 
-      <div class="save-row">
-        <button class="qbtn qbtn-secondary" onclick="switchView('todo')">Cancel</button>
-        <button class="qbtn qbtn-run" onclick="saveSettings()">Save Settings</button>
+      <!-- ── SETTINGS ── -->
+      <div id="settings-panel">
+        <div class="settings-wrap">
+          <div class="s-section">
+            <div class="s-section-title">AI Providers <span class="s-badge">Required</span></div>
+            <div class="s-row"><label class="s-label">Claude API Key</label><input class="s-input" type="password" id="s-claudeKey" placeholder="sk-ant-…"/></div>
+            <div class="s-row"><label class="s-label">OpenAI API Key</label><input class="s-input" type="password" id="s-openaiKey" placeholder="sk-…"/></div>
+          </div>
+
+          <div class="s-section">
+            <div class="s-section-title">WhatsApp — Twilio <span class="s-badge">Recommended</span></div>
+            <div class="s-two">
+              <div class="s-row"><label class="s-label">Account SID</label><input class="s-input" id="s-twilioSid" placeholder="ACxxxxxxxxxx"/></div>
+              <div class="s-row"><label class="s-label">Auth Token</label><input class="s-input" type="password" id="s-twilioToken" placeholder="Token"/></div>
+            </div>
+            <div class="s-two">
+              <div class="s-row"><label class="s-label">From (Twilio number)</label><input class="s-input" id="s-twilioFrom" placeholder="whatsapp:+14155238886"/></div>
+              <div class="s-row"><label class="s-label">Your WhatsApp number</label><input class="s-input" id="s-whatsappTo" placeholder="whatsapp:+91XXXXXXXXXX"/></div>
+            </div>
+            <div class="s-row">
+              <label class="s-label">Twilio Webhook URL — set this in Twilio Console</label>
+              <div class="s-webhook" id="webhook-display">Run ngrok first to get URL</div>
+              <div class="s-hint">1. Run <code>npx ngrok http 3456</code> in terminal<br/>2. Copy the https URL → paste in Twilio → WhatsApp Sandbox → "When a message comes in"</div>
+            </div>
+          </div>
+
+          <div class="s-section">
+            <div class="s-section-title">Email Fallback</div>
+            <div class="s-two">
+              <div class="s-row"><label class="s-label">Gmail</label><input class="s-input" id="s-gmailUser" placeholder="you@gmail.com"/></div>
+              <div class="s-row"><label class="s-label">App Password</label><input class="s-input" type="password" id="s-gmailPass" placeholder="xxxx xxxx xxxx xxxx"/></div>
+            </div>
+            <div class="s-row"><label class="s-label">Send results to</label><input class="s-input" id="s-emailTo" placeholder="recipient@email.com"/></div>
+          </div>
+
+          <button class="s-save-btn" onclick="saveSettings()">💾 Save Settings</button>
+        </div>
       </div>
+
     </div>
   </div>
 </div>
 
-<!-- NEW LIST MODAL (reused for confirmation info) -->
-<div id="modal-list" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-list')">
+<!-- ADD TASK MODAL -->
+<div class="modal-bg" id="add-modal" style="display:none" onclick="if(event.target===this)closeModal()">
   <div class="modal">
-    <h2 id="modal-title">Save Task List</h2>
-    <div class="field-group" style="margin-bottom:12px">
-      <div class="field-label">List Name</div>
-      <input class="field-input" id="ml-name" placeholder="e.g. Daily Research - June 1" onkeydown="if(event.key==='Enter')saveList()"/>
+    <h2>➕ Add Task</h2>
+    <div class="s-row"><label class="s-label">Task Name</label><input class="s-input" id="m-title" placeholder="e.g. Summarize today's Java news"/></div>
+    <div class="s-row"><label class="s-label">Prompt — what should the AI do?</label><textarea class="s-input" id="m-prompt" rows="4" style="resize:vertical" placeholder="Write the full prompt for Claude or ChatGPT…"></textarea></div>
+    <div class="s-two">
+      <div class="s-row">
+        <label class="s-label">AI Provider</label>
+        <select class="s-input" id="m-provider">
+          <option value="claude">Claude (Anthropic)</option>
+          <option value="openai">ChatGPT (OpenAI)</option>
+        </select>
+      </div>
+      <div class="s-row">
+        <label class="s-label">Send result via</label>
+        <select class="s-input" id="m-channel">
+          <option value="whatsapp">WhatsApp</option>
+          <option value="email">Email</option>
+        </select>
+      </div>
     </div>
+    <label class="ctx-check" style="margin-top:8px"><input type="checkbox" id="m-context"/><span>Pass previous task's response as context (for linked tasks)</span></label>
     <div class="modal-actions">
-      <button class="qbtn qbtn-secondary" onclick="closeModal('modal-list')">Cancel</button>
-      <button class="qbtn qbtn-run" onclick="saveList()">Save & Run</button>
+      <button class="m-cancel" onclick="closeModal()">Cancel</button>
+      <button class="m-ok" onclick="saveTask()">Add Task</button>
     </div>
   </div>
 </div>
@@ -500,533 +403,372 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 <script>
 const api = window.taskpilot;
 let tasks = [];
-let taskIdCounter = 0;
-let queueRunning = false;
-let currentListId = null;
-let currentAI = 'claude';
-let chatConvos = { claude: [], openai: [] };
-let chatHistory = [];
-let rateLimitTimer = null;
+let listId = null;
+let currentTab = 'activity';
+let chatAI = 'claude';
+let chatHistory = { claude: [], openai: [] };
+let chatLoading = false;
+let waitingTaskTitle = '';
 
-const aiMeta = {
-  claude: { name:'Claude', model:'claude-sonnet-4-20250514', dot:'var(--accent)', av:'CL' },
-  openai: { name:'ChatGPT', model:'gpt-4o', dot:'var(--accent2)', av:'GP' }
-};
+// ── INIT ──────────────────────────────────────────────────────
+async function init() {
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
 
-// ── VIEW SWITCHING ────────────────────────────────────────────
-function switchView(v) {
-  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-  document.getElementById('view-'+v).classList.add('active');
-  document.getElementById('tab-'+v).classList.add('active');
+  // Load or create today's list
+  const lists = await api.getLists();
+  const today = new Date().toISOString().split('T')[0];
+  let todayList = lists.find(l => l.name.startsWith('Today'));
+
+  if (!todayList) {
+    todayList = await api.createList(`Today — ${today}`, 'Daily task automation');
+  }
+  listId = todayList.id;
+  tasks = await api.getTasksForList(listId);
+  renderTasks();
+
+  const settings = await api.getSettings();
+  loadSettingsUI(settings);
+  if (settings.ngrokUrl) {
+    document.getElementById('webhook-display').textContent = settings.ngrokUrl + '/webhook/whatsapp';
+  }
+
+  setupEvents();
+  showTab('activity');
 }
 
-// ── TASK MANAGEMENT ───────────────────────────────────────────
-function addTask() {
-  const title   = document.getElementById('f-title').value.trim();
-  const prompt  = document.getElementById('f-prompt').value.trim();
-  const provider= document.getElementById('f-provider').value;
-  const channel = document.getElementById('f-channel').value;
-  const context = document.getElementById('f-context').checked;
-
-  if (!title || !prompt) { toast('Title and prompt are required', 'err'); return; }
-
-  tasks.push({ id: ++taskIdCounter, title, prompt, provider, channel, context, status: 'pending', response: null });
-  clearForm();
-  renderTaskList();
-  renderResponseCards();
-  toast('Task added to queue ✓', 'ok');
-}
-
-function clearForm() {
-  document.getElementById('f-title').value = '';
-  document.getElementById('f-prompt').value = '';
-  document.getElementById('f-context').checked = false;
-}
-
-function deleteTask(id) {
-  tasks = tasks.filter(t => t.id !== id);
-  renderTaskList();
-  renderResponseCards();
-}
-
-function renderTaskList() {
+// ── TASK RENDERING ────────────────────────────────────────────
+function renderTasks() {
   const el = document.getElementById('tasks-list');
-  const sub = document.getElementById('queue-subtitle');
-  const pending = tasks.filter(t => t.status === 'pending').length;
-  sub.textContent = `${tasks.length} task(s) · ${pending} pending`;
-
   if (!tasks.length) {
-    el.innerHTML = '<div class="no-tasks">No tasks yet — add your first task above ↑</div>';
+    el.innerHTML = '<div style="padding:40px 16px;text-align:center;color:var(--muted)"><div style="font-size:28px;margin-bottom:8px;opacity:0.3">📝</div><div style="font-size:12px">Add your first task above</div></div>';
     return;
   }
 
-  el.innerHTML = tasks.map(t => `
-    <div class="task-pill ${t.status}" id="pill-${t.id}">
-      <div class="task-num-badge">${t.id}</div>
-      <div class="task-pill-info">
-        <div class="task-pill-title">${esc(t.title)}</div>
-        <div class="task-pill-meta">
-          <span class="pill-badge ${t.provider === 'claude' ? 'pb-claude' : 'pb-openai'}">${t.provider === 'claude' ? 'Claude' : 'GPT'}</span>
-          <span class="pill-badge ${t.channel === 'whatsapp' ? 'pb-whatsapp' : 'pb-email'}">${t.channel === 'whatsapp' ? '📱 WA' : '📧 Email'}</span>
-          ${t.context ? '<span class="pill-badge pb-linked">🔗 linked</span>' : ''}
-          ${statusBadge(t.status)}
-        </div>
-      </div>
-      <button class="task-pill-del" onclick="deleteTask(${t.id})" title="Remove">✕</button>
-    </div>
-  `).join('');
-}
-
-function statusBadge(s) {
-  const map = {
-    running: '<span class="pill-badge pb-running">● Running</span>',
-    waiting_confirm: '<span class="pill-badge pb-waiting">⏳ Confirm</span>',
-    done: '<span class="pill-badge pb-done">✓ Done</span>',
-    failed: '<span class="pill-badge pb-failed">✗ Failed</span>',
-    skipped: '<span class="pill-badge pb-skipped">↷ Skipped</span>',
-    pending: ''
-  };
-  return map[s] || '';
-}
-
-function renderResponseCards() {
-  const el = document.getElementById('response-cards');
-  if (!tasks.length) {
-    el.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--muted)">
-      <div style="font-size:40px;margin-bottom:14px;opacity:.2">📋</div>
-      <div style="font-size:14px">Add tasks on the left and press <strong style="color:var(--muted2)">Run All</strong> to start</div>
-    </div>`;
-    return;
-  }
+  const done = tasks.filter(t => t.status === 'done' || t.status === 'skipped').length;
+  document.getElementById('progress-fill').style.width = tasks.length ? `${(done/tasks.length)*100}%` : '0%';
 
   el.innerHTML = tasks.map(t => {
-    const showConfirm = t.status === 'waiting_confirm';
+    const icon = { pending:'⬜', running:'🔄', waiting_confirm:'⏳', done:'✅', failed:'❌', skipped:'⏭' }[t.status] || '⬜';
     return `
-    <div class="response-card ${showConfirm ? 'waiting' : ''}" id="rc-${t.id}">
-      <div class="rc-header">
-        <div class="rc-num">${t.id}</div>
-        <div>
-          <div class="rc-title">${esc(t.title)}</div>
-          <div class="rc-badges">
-            <span class="pill-badge ${t.provider==='claude'?'pb-claude':'pb-openai'}">${t.provider==='claude'?'Claude':'ChatGPT'}</span>
-            <span class="pill-badge ${t.channel==='whatsapp'?'pb-whatsapp':'pb-email'}">${t.channel==='whatsapp'?'📱 WhatsApp':'📧 Email'}</span>
-            ${t.context?'<span class="pill-badge pb-linked">🔗 linked context</span>':''}
-            ${statusBadge(t.status)}
-          </div>
-        </div>
+    <div class="task-item ${t.status}" id="ti-${t.id}">
+      <div class="task-row1">
+        <div class="task-num">${t.position}</div>
+        <div class="task-name">${esc(t.title)}</div>
+        <div class="task-status-icon">${icon}</div>
       </div>
-      <div class="rc-prompt">${esc(t.prompt)}</div>
-      ${t.response ? `<div class="rc-response">${esc(t.response)}</div>` : ''}
-      ${showConfirm ? confirmBar(t.id) : ''}
+      <div class="task-meta">
+        <span class="pill ${t.ai_provider}">${t.ai_provider === 'claude' ? 'Claude' : 'ChatGPT'}</span>
+        <span class="pill" style="background:rgba(100,116,139,0.1);color:var(--muted)">${t.notify_channel}</span>
+        ${t.use_prev_context ? '<span class="pill linked">🔗 linked</span>' : ''}
+      </div>
+      <button class="task-del" onclick="delTask('${t.id}')">✕</button>
     </div>`;
   }).join('');
 }
 
-function confirmBar(taskId) {
-  return `
-  <div class="confirm-bar">
-    <div class="confirm-bar-label">⏳ WAITING FOR YOUR CONFIRMATION — reply on WhatsApp or click below</div>
-    <div class="confirm-actions">
-      <button class="cbtn cbtn-confirm" onclick="inAppConfirm('confirm',${taskId})">▶ CONFIRM — run next</button>
-      <button class="cbtn cbtn-skip" onclick="inAppConfirm('skip',${taskId})">⏭ SKIP</button>
-    </div>
-    <div class="modify-row">
-      <input class="modify-input" id="mod-${taskId}" placeholder="Or type your modification here and click MODIFY..."/>
-      <button class="cbtn-modify" onclick="inAppModify(${taskId})">✏️ MODIFY & RE-RUN</button>
-    </div>
-  </div>`;
+// ── ADD TASK ──────────────────────────────────────────────────
+function openAddModal() {
+  const titleEl = document.getElementById('new-task-title');
+  document.getElementById('m-title').value = titleEl.value.trim();
+  document.getElementById('m-prompt').value = '';
+  document.getElementById('m-provider').value = document.getElementById('quick-provider').value;
+  document.getElementById('m-channel').value = document.getElementById('quick-channel').value;
+  document.getElementById('m-context').checked = false;
+  document.getElementById('add-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById(titleEl.value ? 'm-prompt' : 'm-title').focus(), 80);
+}
+function closeModal() { document.getElementById('add-modal').style.display = 'none'; }
+function focusPrompt() { openAddModal(); }
+
+async function saveTask() {
+  const title  = document.getElementById('m-title').value.trim();
+  const prompt = document.getElementById('m-prompt').value.trim();
+  if (!title || !prompt) { toast('Title and prompt required', 'err'); return; }
+  await api.createTask({
+    listId, position: tasks.length + 1, title, prompt,
+    aiProvider:    document.getElementById('m-provider').value,
+    notifyChannel: document.getElementById('m-channel').value,
+    usePrevContext: document.getElementById('m-context').checked,
+  });
+  document.getElementById('new-task-title').value = '';
+  closeModal();
+  tasks = await api.getTasksForList(listId);
+  renderTasks();
+  toast('Task added!', 'ok');
 }
 
-// ── QUEUE ENGINE (runs in renderer for demo; in real app uses IPC) ─
-let currentTaskIndex = 0;
-let pendingConfirmResolve = null;
+async function delTask(id) {
+  await api.deleteTask(id);
+  tasks = await api.getTasksForList(listId);
+  renderTasks();
+}
 
+// ── QUEUE CONTROLS ────────────────────────────────────────────
 async function startQueue() {
-  if (!tasks.length) { toast('Add at least one task first!', 'err'); return; }
-  if (queueRunning) return;
-
-  queueRunning = true;
-  currentTaskIndex = 0;
-  tasks.forEach(t => { t.status = 'pending'; t.response = null; });
-  renderTaskList();
-  renderResponseCards();
-  setNavStatus('running', 'Queue running...');
-  updateQueueBtns(true);
-
-  let prevResponse = null;
-
-  for (let i = 0; i < tasks.length; i++) {
-    if (!queueRunning) break;
-    const task = tasks[i];
-    currentTaskIndex = i;
-
-    task.status = 'running';
-    renderTaskList(); renderResponseCards();
-    setNavStatus('running', `Running: ${task.title}`);
-
-    try {
-      const contextText = task.context && prevResponse ? prevResponse : null;
-      const response = await callAI(task, contextText);
-      task.response = response;
-      task.status = 'waiting_confirm';
-      renderTaskList(); renderResponseCards();
-
-      // Scroll to this card
-      document.getElementById(`rc-${task.id}`)?.scrollIntoView({ behavior:'smooth', block:'center' });
-
-      // Show WA indicator
-      document.getElementById('wa-strip').style.display = 'flex';
-      setNavStatus('running', 'Waiting for WhatsApp confirmation...');
-
-      // Send via WhatsApp IPC (in real app)
-      if (api) {
-        await api.sendConfirmation?.('notify', task.title, response);
-      }
-
-      // Wait for in-app or WhatsApp confirmation
-      const action = await waitForConfirmation(task.id);
-      document.getElementById('wa-strip').style.display = 'none';
-
-      if (action.type === 'confirm') {
-        task.status = 'done';
-        prevResponse = response;
-      } else if (action.type === 'skip') {
-        task.status = 'skipped';
-        prevResponse = null;
-      } else if (action.type === 'modify') {
-        task.status = 'pending';
-        task.prompt = task.prompt + '\n\nModification: ' + action.instruction;
-        i--; // re-run same task
-        renderTaskList(); renderResponseCards();
-        continue;
-      }
-
-      renderTaskList(); renderResponseCards();
-
-    } catch(err) {
-      if (err.message?.includes('429') || err.message?.includes('rate_limit')) {
-        await handleRateLimit(task);
-        i--; // retry
-      } else {
-        task.status = 'failed';
-        renderTaskList(); renderResponseCards();
-        toast(`Task failed: ${err.message}`, 'err');
-      }
-    }
-  }
-
-  queueRunning = false;
-  document.getElementById('wa-strip').style.display = 'none';
-  setNavStatus('idle', tasks.every(t => t.status==='done' || t.status==='skipped') ? 'All done! 🎉' : 'Queue stopped');
-  updateQueueBtns(false);
-
-  if (tasks.every(t => t.status === 'done' || t.status === 'skipped')) {
-    toast('🎉 All tasks complete! WhatsApp notified.', 'ok');
-  }
+  if (!tasks.length) { toast('Add tasks first!', 'err'); return; }
+  await api.startQueue(listId);
+  setStatus('running', 'Queue running…');
+  updateRunBtns('running');
 }
+async function pauseQueue()  { await api.pauseQueue();  setStatus('paused', 'Paused'); updateRunBtns('paused'); }
+async function resumeQueue() { await api.resumeQueue(); setStatus('running', 'Resuming…'); updateRunBtns('running'); }
+async function stopQueue()   { await api.stopQueue();   setStatus('idle', 'Stopped'); updateRunBtns('idle'); refreshTasks(); }
 
-async function callAI(task, contextText) {
-  const prompt = contextText
-    ? `Context from previous task:\n\n${contextText}\n\n---\n\nYour task:\n${task.prompt}`
-    : task.prompt;
-
-  if (task.provider === 'claude') {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        system: 'You are a helpful AI assistant inside TaskPilot. Complete the task clearly and concisely.',
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
-    const data = await res.json();
-    return data.content?.[0]?.text || 'No response.';
+function updateRunBtns(state) {
+  const el = document.getElementById('run-btns');
+  if (state === 'running') {
+    el.innerHTML = `<button class="run-btn pause" onclick="pauseQueue()">⏸ Pause</button><button class="run-btn stop" onclick="stopQueue()">⏹ Stop</button>`;
+  } else if (state === 'paused') {
+    el.innerHTML = `<button class="run-btn resume" onclick="resumeQueue()">▶ Resume</button><button class="run-btn stop" onclick="stopQueue()">⏹ Stop</button>`;
   } else {
-    // OpenAI — needs key from settings
-    const key = await api?.getSetting?.('openaiApiKey');
-    if (!key) throw new Error('OpenAI API key not set. Add it in Settings.');
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
-      body: JSON.stringify({ model: 'gpt-4o', max_tokens: 1500, messages: [{ role:'user', content: prompt }] })
-    });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || 'No response.';
+    el.innerHTML = `<button class="run-btn go" onclick="startQueue()">▶ Run All Tasks</button>`;
   }
 }
 
-function waitForConfirmation(taskId) {
-  return new Promise(resolve => { pendingConfirmResolve = resolve; });
+function setStatus(state, text) {
+  const dot = document.getElementById('tb-dot');
+  dot.className = 'tb-dot' + (state === 'running' ? ' green' : state === 'limited' ? ' amber' : '');
+  document.getElementById('tb-status-text').textContent = text;
 }
 
-function inAppConfirm(type, taskId) {
-  if (pendingConfirmResolve) { pendingConfirmResolve({ type }); pendingConfirmResolve = null; }
+// ── CONFIRMATION ──────────────────────────────────────────────
+function showConfirmBanner(taskTitle) {
+  waitingTaskTitle = taskTitle;
+  document.getElementById('cb-task-name').textContent = taskTitle;
+  document.getElementById('confirm-banner').style.display = 'block';
+  document.getElementById('modify-input').value = '';
+  showTab('activity');
 }
+function hideConfirmBanner() { document.getElementById('confirm-banner').style.display = 'none'; }
 
-function inAppModify(taskId) {
-  const val = document.getElementById(`mod-${taskId}`)?.value?.trim();
+async function sendConfirm(action) { await api.sendConfirmation(action); hideConfirmBanner(); }
+async function sendModify() {
+  const val = document.getElementById('modify-input').value.trim();
   if (!val) { toast('Type your modification first', 'err'); return; }
-  if (pendingConfirmResolve) { pendingConfirmResolve({ type: 'modify', instruction: val }); pendingConfirmResolve = null; }
+  await api.sendConfirmation('modify', val);
+  hideConfirmBanner();
 }
 
-async function handleRateLimit(task) {
-  const waitSecs = 60;
-  task.status = 'pending';
-  document.getElementById('rate-banner').style.display = 'flex';
-  document.getElementById('rate-badge').style.display = 'flex';
-  setNavStatus('limited', `Rate limited — waiting ${waitSecs}s`);
-  document.getElementById('nav-dot').classList.add('limited');
-  toast(`⏳ Rate limit hit. Waiting ${waitSecs}s...`, 'info');
+// ── ACTIVITY FEED ─────────────────────────────────────────────
+const feedEvents = [];
+function addFeedEvent({ icon, iconClass, title, detail, response }) {
+  document.getElementById('feed-empty').style.display = 'none';
+  const el = document.getElementById('feed-panel');
+  const div = document.createElement('div');
+  div.className = 'feed-event';
+  const timeStr = new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  div.innerHTML = `
+    <div class="feed-icon ${iconClass}">${icon}</div>
+    <div class="feed-body">
+      <div class="feed-title">${esc(title)}</div>
+      <div class="feed-time">${timeStr}${detail ? ' · ' + esc(detail) : ''}</div>
+      ${response ? `<div class="feed-response">${esc(response)}</div>` : ''}
+    </div>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
 
-  let remaining = waitSecs;
-  await new Promise(resolve => {
-    rateLimitTimer = setInterval(() => {
-      remaining--;
-      document.getElementById('rate-timer').textContent = `${remaining}s`;
-      if (remaining <= 0) {
-        clearInterval(rateLimitTimer);
-        document.getElementById('rate-banner').style.display = 'none';
-        document.getElementById('rate-badge').style.display = 'none';
-        document.getElementById('nav-dot').classList.remove('limited');
-        setNavStatus('running', 'Rate limit cleared. Resuming...');
-        resolve();
-      }
-    }, 1000);
+async function refreshTasks() {
+  tasks = await api.getTasksForList(listId);
+  renderTasks();
+}
+
+// ── BACKEND EVENTS ────────────────────────────────────────────
+function setupEvents() {
+  api.on('task:started', async d => {
+    await refreshTasks();
+    addFeedEvent({ icon:'🔄', iconClass:'blue', title:`Running: ${d.title}`, detail:`Task ${d.position}/${d.total}` });
+    setStatus('running', `Running task ${d.position}/${d.total}…`);
+  });
+
+  api.on('task:response', async d => {
+    await refreshTasks();
+    addFeedEvent({ icon:'🤖', iconClass:'green', title:'AI response received', detail:`Task ${d.position}/${d.total}`, response: d.response });
+  });
+
+  api.on('task:waiting', async d => {
+    await refreshTasks();
+    const task = tasks.find(t => t.id === d.taskId);
+    const title = task ? task.title : 'Current task';
+    showConfirmBanner(title);
+    addFeedEvent({ icon:'⏳', iconClass:'amber', title:`Waiting for your confirmation`, detail:'Reply on WhatsApp or confirm in app' });
+    setStatus('running', 'Waiting for confirmation…');
+  });
+
+  api.on('task:done', async () => { await refreshTasks(); hideConfirmBanner(); });
+  api.on('task:skipped', async () => { await refreshTasks(); hideConfirmBanner(); addFeedEvent({ icon:'⏭', iconClass:'amber', title:'Task skipped' }); });
+  api.on('task:modified', async d => { addFeedEvent({ icon:'✏️', iconClass:'purple', title:'Task modified', detail:d.instruction }); });
+  api.on('task:failed', async d => {
+    await refreshTasks();
+    addFeedEvent({ icon:'❌', iconClass:'red', title:'Task failed', detail:d.error });
+    toast(`Task failed: ${d.error}`, 'err');
+    updateRunBtns('idle');
+  });
+
+  api.on('list:started', d => {
+    addFeedEvent({ icon:'🚀', iconClass:'green', title:`Started: ${d.name}` });
+  });
+
+  api.on('list:completed', async () => {
+    await refreshTasks();
+    hideConfirmBanner();
+    updateRunBtns('idle');
+    setStatus('idle', 'All tasks done! 🎉');
+    addFeedEvent({ icon:'🎉', iconClass:'green', title:'All tasks completed!' });
+    toast('🎉 All tasks done!', 'ok');
+  });
+
+  api.on('queue:paused', async () => { await refreshTasks(); setStatus('paused', 'Paused'); updateRunBtns('paused'); });
+  api.on('queue:resumed', () => setStatus('running', 'Resumed…'));
+  api.on('queue:stopped', async () => { await refreshTasks(); updateRunBtns('idle'); });
+
+  api.on('rate:limited', d => {
+    setStatus('limited', `Rate limited — waiting ${d.retryAfterSeconds}s…`);
+    document.getElementById('tb-dot').className = 'tb-dot amber';
+    addFeedEvent({ icon:'⏳', iconClass:'amber', title:`${d.provider} rate limit hit`, detail:`Auto-resuming in ${d.retryAfterSeconds}s` });
+    toast(`Rate limited — waiting ${d.retryAfterSeconds}s`, 'err');
+  });
+  api.on('rate:resumed', d => {
+    setStatus('running', 'Rate limit cleared — resuming…');
+    addFeedEvent({ icon:'✅', iconClass:'green', title:`${d.provider} rate limit cleared` });
+  });
+
+  api.on('confirmation', d => {
+    addFeedEvent({ icon:'💬', iconClass:'purple', title:`WhatsApp reply: ${d.action}`, detail:d.instruction || '' });
   });
 }
 
-function stopQueue() {
-  queueRunning = false;
-  if (pendingConfirmResolve) { pendingConfirmResolve({ type: 'skip' }); pendingConfirmResolve = null; }
-  if (rateLimitTimer) clearInterval(rateLimitTimer);
-  document.getElementById('wa-strip').style.display = 'none';
-  document.getElementById('rate-banner').style.display = 'none';
-  setNavStatus('idle', 'Stopped');
-  updateQueueBtns(false);
-  tasks.forEach(t => { if (t.status === 'running') t.status = 'pending'; });
-  renderTaskList(); renderResponseCards();
+// ── TABS ──────────────────────────────────────────────────────
+function showTab(tab) {
+  currentTab = tab;
+  ['activity','chat','settings'].forEach(t => {
+    document.getElementById(`tab-${t}`)?.classList.toggle('active', t === tab);
+  });
+  document.getElementById('activity-panel').style.display = tab === 'activity' ? 'flex' : 'none';
+  document.getElementById('chat-panel').style.display     = tab === 'chat'     ? 'flex' : 'none';
+  document.getElementById('settings-panel').style.display = tab === 'settings' ? 'block' : 'none';
+  if (tab === 'chat') document.getElementById('chat-input').focus();
 }
 
-function updateQueueBtns(running) {
-  const el = document.getElementById('queue-btns');
-  if (running) {
-    el.innerHTML = `
-      <button class="qbtn qbtn-stop" onclick="stopQueue()">⏹ Stop Queue</button>`;
-  } else {
-    el.innerHTML = `<button class="qbtn qbtn-run" onclick="startQueue()">▶ Run All</button>`;
-  }
-}
-
-// ── NAV STATUS ────────────────────────────────────────────────
-function setNavStatus(state, text) {
-  const dot = document.getElementById('nav-dot');
-  dot.className = 'nav-status-dot' + (state === 'running' ? ' running' : state === 'limited' ? ' limited' : '');
-  document.getElementById('nav-status-text').textContent = text;
-}
-
-// ── DIRECT CHAT ───────────────────────────────────────────────
-let chatLoading = false;
-
-function switchAI(ai) {
-  currentAI = ai;
-  document.getElementById('ai-claude-btn').classList.toggle('active', ai==='claude');
-  document.getElementById('ai-openai-btn').classList.toggle('active', ai==='openai');
-  document.getElementById('ai-claude-btn').classList.toggle('gpt', false);
-  document.getElementById('ai-openai-btn').classList.toggle('gpt', ai==='openai');
-  const m = aiMeta[ai];
-  document.getElementById('chat-dot').style.background = m.dot;
-  document.getElementById('chat-ai-name').textContent = m.name;
-  document.getElementById('chat-ai-model').textContent = m.model;
+// ── CHAT ──────────────────────────────────────────────────────
+function switchChatAI(ai) {
+  chatAI = ai;
+  document.getElementById('chat-claude-btn').classList.toggle('active', ai === 'claude');
+  document.getElementById('chat-openai-btn').classList.toggle('active', ai === 'openai');
+  document.getElementById('chat-claude-btn').classList.toggle('claude', true);
+  document.getElementById('chat-openai-btn').classList.toggle('openai', true);
   renderChatMessages();
 }
 
 function renderChatMessages() {
-  const msgs = chatConvos[currentAI];
-  const el = document.getElementById('chat-messages');
-  const emptyEl = document.getElementById('chat-empty');
-  const existing = el.querySelectorAll('.msg,.typing-wrap');
-  existing.forEach(m => m.remove());
-  if (!msgs.length) { emptyEl.style.display = 'flex'; return; }
-  emptyEl.style.display = 'none';
-  msgs.forEach(m => el.appendChild(buildMsgEl(m.role, m.content)));
+  const el = document.getElementById('chat-msgs');
+  el.innerHTML = '';
+  chatHistory[chatAI].forEach(m => el.appendChild(makeMsgEl(m.role, m.content)));
   el.scrollTop = el.scrollHeight;
 }
 
-function buildMsgEl(role, content) {
-  const isUser = role === 'user';
-  const m = aiMeta[currentAI];
-  const wrap = document.createElement('div');
-  wrap.className = 'msg ' + (isUser ? 'user' : 'ai');
-
+function makeMsgEl(role, content) {
+  const d = document.createElement('div');
+  d.className = `chat-msg ${role === 'user' ? 'user' : 'ai'}`;
   const av = document.createElement('div');
-  av.className = 'msg-av ' + (isUser ? 'user' : `ai-${currentAI}`);
-  av.textContent = isUser ? 'You' : m.av;
-
-  const bubble = document.createElement('div');
-  bubble.className = 'msg-bubble';
-  bubble.textContent = content;
-
-  if (!isUser) {
-    const addBtn = document.createElement('button');
-    addBtn.className = 'add-to-task-btn';
-    addBtn.textContent = '+ Add as task';
-    addBtn.onclick = () => {
-      document.getElementById('f-title').value = 'Follow-up: ' + content.substring(0, 40);
-      document.getElementById('f-prompt').value = content;
-      switchView('todo');
-      toast('Pasted into task form ✓', 'ok');
-    };
-    bubble.appendChild(addBtn);
-  }
-
-  wrap.appendChild(av); wrap.appendChild(bubble);
-  return wrap;
-}
-
-function showTypingIndicator() {
-  const el = document.getElementById('chat-messages');
-  const m = aiMeta[currentAI];
-  const wrap = document.createElement('div');
-  wrap.className = 'msg ai typing-wrap';
-  const av = document.createElement('div');
-  av.className = `msg-av ai-${currentAI}`;
-  av.textContent = m.av;
-  const bubble = document.createElement('div');
-  bubble.className = 'msg-bubble msg-typing';
-  bubble.innerHTML = '<span></span><span></span><span></span>';
-  wrap.appendChild(av); wrap.appendChild(bubble);
-  el.appendChild(wrap);
-  el.scrollTop = el.scrollHeight;
-  return wrap;
+  av.className = 'msg-av';
+  av.style.background = role === 'user' ? 'rgba(110,231,183,0.15)' : 'var(--card)';
+  av.style.color = role === 'user' ? 'var(--green)' : 'var(--muted2)';
+  av.textContent = role === 'user' ? 'You' : (chatAI === 'claude' ? 'CL' : 'GP');
+  const bub = document.createElement('div');
+  bub.className = 'msg-bub';
+  bub.textContent = content;
+  d.appendChild(av); d.appendChild(bub);
+  return d;
 }
 
 async function chatSend() {
   const input = document.getElementById('chat-input');
   const text = input.value.trim();
   if (!text || chatLoading) return;
-
-  input.value = '';
-  chatResize(input);
+  input.value = ''; chatResize(input);
   chatLoading = true;
-  document.getElementById('chat-send-btn').disabled = true;
-  document.getElementById('chat-empty').style.display = 'none';
+  document.getElementById('chat-send').disabled = true;
 
-  chatConvos[currentAI].push({ role:'user', content: text });
-  const msgEl = document.getElementById('chat-messages');
-  msgEl.appendChild(buildMsgEl('user', text));
-  msgEl.scrollTop = msgEl.scrollHeight;
+  chatHistory[chatAI].push({ role: 'user', content: text });
+  const el = document.getElementById('chat-msgs');
+  el.appendChild(makeMsgEl('user', text));
 
-  const typingEl = showTypingIndicator();
+  const typDiv = document.createElement('div');
+  typDiv.className = 'chat-msg ai';
+  const typAv = document.createElement('div');
+  typAv.className = 'msg-av';
+  typAv.style.background = 'var(--card)';
+  typAv.style.color = 'var(--muted2)';
+  typAv.textContent = chatAI === 'claude' ? 'CL' : 'GP';
+  const typBub = document.createElement('div');
+  typBub.className = 'msg-bub typing-dots';
+  typBub.innerHTML = '<span></span><span></span><span></span>';
+  typDiv.appendChild(typAv); typDiv.appendChild(typBub);
+  el.appendChild(typDiv); el.scrollTop = el.scrollHeight;
 
   try {
     let reply = '';
-    if (currentAI === 'claude') {
+    if (chatAI === 'claude') {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 1200,
-          system: 'You are a helpful AI assistant inside TaskPilot, a task automation app. Be helpful, concise, and technical when needed. The user is a Java backend engineer.',
-          messages: chatConvos[currentAI]
+          max_tokens: 1024,
+          system: 'You are a helpful AI assistant inside TaskPilot, a daily task automation app. Be concise and helpful.',
+          messages: chatHistory[chatAI]
         })
       });
       const data = await res.json();
       reply = data.content?.[0]?.text || 'No response.';
     } else {
-      reply = 'ChatGPT requires your OpenAI API key. Go to ⚙ Settings and add your key — then ChatGPT will work exactly like Claude here!';
+      reply = 'ChatGPT needs your OpenAI API key. Add it in Settings → OpenAI API Key, then it will work here just like Claude!';
     }
-
-    typingEl.remove();
-    chatConvos[currentAI].push({ role:'assistant', content: reply });
-    msgEl.appendChild(buildMsgEl('assistant', reply));
-    msgEl.scrollTop = msgEl.scrollHeight;
-
-    chatHistory.unshift({ ai: currentAI, preview: text.substring(0, 28) });
-    chatHistory = chatHistory.slice(0, 6);
-    renderChatHistory();
-
+    typDiv.remove();
+    chatHistory[chatAI].push({ role: 'assistant', content: reply });
+    el.appendChild(makeMsgEl('assistant', reply));
+    el.scrollTop = el.scrollHeight;
   } catch(e) {
-    typingEl.remove();
+    typDiv.remove();
     const err = 'Error: ' + e.message;
-    chatConvos[currentAI].push({ role:'assistant', content: err });
-    msgEl.appendChild(buildMsgEl('assistant', err));
-    msgEl.scrollTop = msgEl.scrollHeight;
+    chatHistory[chatAI].push({ role: 'assistant', content: err });
+    el.appendChild(makeMsgEl('assistant', err));
   }
 
   chatLoading = false;
-  document.getElementById('chat-send-btn').disabled = false;
+  document.getElementById('chat-send').disabled = false;
   document.getElementById('chat-input').focus();
 }
 
-function renderChatHistory() {
-  const el = document.getElementById('chat-history-list');
-  const dotColor = { claude: 'var(--accent)', openai: 'var(--accent2)' };
-  el.innerHTML = chatHistory.map(h =>
-    `<div class="chat-history-item"><span style="color:${dotColor[h.ai]};margin-right:5px;font-size:9px">●</span>${h.preview}...</div>`
-  ).join('');
-}
-
-function clearChat() { chatConvos[currentAI] = []; renderChatMessages(); }
-function chipSend(t) { document.getElementById('chat-input').value = t; chatSend(); }
-function chatKey(e) { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); chatSend(); } }
-function chatResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,120)+'px'; }
+function chatKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatSend(); } }
+function chatResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
 
 // ── SETTINGS ──────────────────────────────────────────────────
-async function loadSettings() {
-  if (!api) return;
-  const s = await api.getSettings();
-  ['claudeApiKey','openaiApiKey','twilioSid','twilioToken','twilioFrom','whatsappTo','gmailUser','gmailPass','emailTo'].forEach(k => {
-    const el = document.getElementById('s-'+k);
-    if (el && s[k]) el.value = s[k];
+function loadSettingsUI(s) {
+  const map = { claudeKey:'claudeApiKey', openaiKey:'openaiApiKey', twilioSid:'twilioSid', twilioToken:'twilioToken', twilioFrom:'twilioFrom', whatsappTo:'whatsappTo', gmailUser:'gmailUser', gmailPass:'gmailPass', emailTo:'emailTo' };
+  Object.entries(map).forEach(([uiKey, dbKey]) => {
+    const el = document.getElementById(`s-${uiKey}`);
+    if (el && s[dbKey]) el.value = s[dbKey];
   });
+  if (s.ngrokUrl) document.getElementById('webhook-display').textContent = s.ngrokUrl + '/webhook/whatsapp';
 }
 
 async function saveSettings() {
-  if (!api) { toast('API not available', 'err'); return; }
-  const s = {};
-  ['claudeApiKey','openaiApiKey','twilioSid','twilioToken','twilioFrom','whatsappTo','gmailUser','gmailPass','emailTo'].forEach(k => {
-    const v = document.getElementById('s-'+k)?.value?.trim();
-    if (v) s[k] = v;
+  const map = { claudeApiKey:'claudeKey', openaiApiKey:'openaiKey', twilioSid:'twilioSid', twilioToken:'twilioToken', twilioFrom:'twilioFrom', whatsappTo:'whatsappTo', gmailUser:'gmailUser', gmailPass:'gmailPass', emailTo:'emailTo' };
+  const settings = {};
+  Object.entries(map).forEach(([dbKey, uiKey]) => {
+    const el = document.getElementById(`s-${uiKey}`);
+    if (el?.value.trim()) settings[dbKey] = el.value.trim();
   });
-  await api.saveAllSettings(s);
+  await api.saveAllSettings(settings);
   toast('Settings saved!', 'ok');
-  setTimeout(() => switchView('todo'), 600);
-}
-
-// ── BACKEND EVENTS ────────────────────────────────────────────
-function setupEvents() {
-  if (!api) return;
-  api.on('task:waiting_confirm', () => { document.getElementById('wa-strip').style.display='flex'; });
-  api.on('task:done', () => { document.getElementById('wa-strip').style.display='none'; });
-  api.on('list:completed', () => { toast('🎉 All tasks complete!', 'ok'); setNavStatus('idle','All done! 🎉'); updateQueueBtns(false); });
-  api.on('rate:limited', ({retryAfterSeconds, provider}) => {
-    document.getElementById('rate-badge').style.display='flex';
-    document.getElementById('nav-dot').classList.add('limited');
-    toast(`⏳ ${provider} rate limited — waiting ${retryAfterSeconds}s`, 'info');
-  });
-  api.on('rate:resumed', () => {
-    document.getElementById('rate-badge').style.display='none';
-    document.getElementById('nav-dot').classList.remove('limited');
-  });
-  api.on('confirmation:received', ({action}) => {
-    if (pendingConfirmResolve) {
-      if (action==='confirm') pendingConfirmResolve({type:'confirm'});
-      else if (action==='skip') pendingConfirmResolve({type:'skip'});
-      pendingConfirmResolve = null;
-    }
-  });
+  setTimeout(() => showTab('activity'), 600);
 }
 
 // ── HELPERS ───────────────────────────────────────────────────
-function closeModal(id) { document.getElementById(id).style.display='none'; }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function toast(msg, type='ok') {
+function toast(msg, type = 'ok') {
   const el = document.createElement('div');
   el.className = `toast ${type}`;
   el.textContent = msg;
@@ -1034,9 +776,7 @@ function toast(msg, type='ok') {
   setTimeout(() => el.remove(), 3000);
 }
 
-// ── INIT ──────────────────────────────────────────────────────
-loadSettings();
-setupEvents();
+init();
 </script>
 </body>
 </html>
