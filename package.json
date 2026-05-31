@@ -1,0 +1,45 @@
+{
+  "name": "taskpilot",
+  "version": "1.0.0",
+  "description": "AI-powered task automation desktop app — run your todo list on autopilot with Claude & ChatGPT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron .",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:all": "electron-builder --mac --win --linux"
+  },
+  "build": {
+    "appId": "com.taskpilot.app",
+    "productName": "TaskPilot",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "better-sqlite3": "^9.4.3",
+    "express": "^4.18.3",
+    "nodemailer": "^6.9.9",
+    "openai": "^4.47.0",
+    "twilio": "^5.2.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "author": "Sahil Sharma",
+  "license": "MIT"
+}
