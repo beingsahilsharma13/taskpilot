@@ -1,7 +1,7 @@
 {
   "name": "taskpilot",
   "version": "1.0.0",
-  "description": "AI-powered task automation desktop app — run your todo list on autopilot with Claude & ChatGPT",
+  "description": "AI-powered task automation desktop app \u2014 run your todo list on autopilot with Claude & ChatGPT",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -34,7 +34,8 @@
     "nodemailer": "^6.9.9",
     "openai": "^4.47.0",
     "twilio": "^5.2.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "electron": "^30.0.0",

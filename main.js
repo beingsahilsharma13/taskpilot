@@ -2,6 +2,9 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
+// Load .env file if present (used for pre-configured API keys)
+try { require('dotenv').config({ path: path.join(__dirname, '.env') }); } catch(e) {}
+
 let mainWindow;
 let db;
 let taskQueue;
@@ -45,16 +48,28 @@ app.whenReady().then(async () => {
   // Start webhook server
   await webhookServer.startServer();
 
-  // Init AI services from saved settings
+  // Init AI services — DB settings first, env vars as fallback
   const settings = db.getAllSettings();
-  if (settings.claudeApiKey || settings.openaiApiKey) {
-    aiEngine.init(settings.claudeApiKey, settings.openaiApiKey);
+  const claudeKey = settings.claudeApiKey || process.env.CLAUDE_API_KEY;
+  const openaiKey = settings.openaiApiKey || process.env.OPENAI_API_KEY;
+  if (claudeKey || openaiKey) {
+    aiEngine.init(claudeKey, openaiKey);
+    // Persist to DB if came from env
+    if (!settings.claudeApiKey && claudeKey) db.setSetting('claudeApiKey', claudeKey);
+    if (!settings.openaiApiKey && openaiKey) db.setSetting('openaiApiKey', openaiKey);
   }
-  if (settings.twilioSid && settings.twilioToken) {
-    whatsapp.init(settings.twilioSid, settings.twilioToken, settings.twilioFrom, settings.whatsappTo);
+  const tSid   = settings.twilioSid   || process.env.TWILIO_ACCOUNT_SID;
+  const tToken = settings.twilioToken || process.env.TWILIO_AUTH_TOKEN;
+  const tFrom  = settings.twilioFrom  || process.env.TWILIO_WHATSAPP_FROM;
+  const waTo   = settings.whatsappTo  || process.env.YOUR_WHATSAPP_NUMBER;
+  if (tSid && tToken) {
+    whatsapp.init(tSid, tToken, tFrom, waTo);
   }
-  if (settings.gmailUser && settings.gmailPass) {
-    emailService.init(settings.gmailUser, settings.gmailPass, settings.emailTo);
+  const gmailUser = settings.gmailUser || process.env.GMAIL_USER;
+  const gmailPass = settings.gmailPass || process.env.GMAIL_APP_PASSWORD;
+  const emailTo   = settings.emailTo   || process.env.NOTIFY_EMAIL;
+  if (gmailUser && gmailPass) {
+    emailService.init(gmailUser, gmailPass, emailTo);
   }
 
   // Forward queue events to renderer
