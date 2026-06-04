@@ -1,0 +1,175 @@
+/**
+ * Task Execution Service
+ * Orchestrates the complete task workflow:
+ * 1. Submit to AI
+ * 2. Capture response
+ * 3. Store in DB
+ * 4. Deliver via Email/WhatsApp
+ * 5. Update status
+ */
+
+const EventEmitter = require('events');
+const { v4: uuidv4 } = require('uuid');
+
+function db() { return require('../../database/db'); }
+function ai() { return require('../backend/aiEngine'); }
+function email() { return require('../backend/email'); }
+function whatsapp() { return require('../backend/whatsapp'); }
+
+class ExecutionService extends EventEmitter {
+  constructor() {
+    super();
+    this.executing = {};
+  }
+
+  /**
+   * Execute a single task end-to-end
+   */
+  async executeTask(task) {
+    const executionId = uuidv4();
+    const startTime = Date.now();
+
+    this.executing[executionId] = { taskId: task.id, startTime };
+    this.emit('execution:start', { executionId, taskId: task.id });
+
+    try {
+      // 1. Update task status to running
+      await db().updateTask(task.id, { status: 'running' });
+      this.emit('task:running', { taskId: task.id });
+
+      // 2. Submit to AI and get response
+      console.log(`[Execution] Running task: ${task.title}`);
+      const aiResponse = await ai().run(task);
+
+      // 3. Store execution record in DB
+      const duration = Date.now() - startTime;
+      const execution = {
+        id: executionId,
+        taskId: task.id,
+        prompt: task.prompt,
+        aiResponse,
+        aiProvider: task.ai_provider,
+        duration,
+        status: 'completed',
+        executedAt: new Date().toISOString(),
+      };
+
+      await db().logExecution(execution);
+      this.emit('task:response', { taskId: task.id, response: aiResponse, duration });
+
+      // 4. Deliver response
+      const deliveryModes = task.deliver_via ? task.deliver_via.split(',') : ['email'];
+
+      const results = {};
+      for (const mode of deliveryModes) {
+        try {
+          results[mode] = await this.deliver(mode, task, aiResponse);
+          this.emit('task:delivered', { taskId: task.id, mode, success: true });
+        } catch (err) {
+          console.error(`[Execution] Delivery failed (${mode}):`, err.message);
+          results[mode] = { success: false, error: err.message };
+          this.emit('task:delivered', { taskId: task.id, mode, success: false, error: err.message });
+        }
+      }
+
+      // 5. Update task status to completed
+      await db().updateTask(task.id, { status: 'completed' });
+      this.emit('task:completed', { 
+        taskId: task.id, 
+        executionId, 
+        duration,
+        deliveryStatus: results 
+      });
+
+      return { success: true, executionId, response: aiResponse, duration, deliveryStatus: results };
+
+    } catch (err) {
+      const duration = Date.now() - startTime;
+      console.error(`[Execution] Task failed:`, err.message);
+
+      // Log failure
+      await db().updateTask(task.id, { status: 'failed' });
+      await db().logExecution({
+        id: executionId,
+        taskId: task.id,
+        prompt: task.prompt,
+        aiResponse: null,
+        aiProvider: task.ai_provider,
+        duration,
+        status: 'failed',
+        error: err.message,
+        executedAt: new Date().toISOString(),
+      });
+
+      this.emit('task:failed', { taskId: task.id, executionId, error: err.message, duration });
+
+      return { success: false, executionId, error: err.message, duration };
+    } finally {
+      delete this.executing[executionId];
+    }
+  }
+
+  /**
+   * Deliver response via selected mode
+   */
+  async deliver(mode, task, response) {
+    if (mode === 'email' && email().isReady()) {
+      const subject = `✅ TaskPilot — ${task.title}`;
+      const html = this.buildEmailHTML(task.title, task.prompt, response);
+      await email().send({ subject, html, to: email().toEmail });
+      return { success: true, method: 'email' };
+    }
+
+    if (mode === 'whatsapp' && whatsapp().isReady()) {
+      const msg = this.buildWhatsAppMessage(task.title, response);
+      await whatsapp().sendText(msg);
+      return { success: true, method: 'whatsapp' };
+    }
+
+    if (mode === 'email') {
+      throw new Error('Email not configured');
+    }
+    if (mode === 'whatsapp') {
+      throw new Error('WhatsApp not configured');
+    }
+
+    throw new Error(`Unknown delivery mode: ${mode}`);
+  }
+
+  buildEmailHTML(title, prompt, response) {
+    return `
+    <html>
+      <body style="font-family:sans-serif;color:#333">
+        <h2 style="color:#4CAF50">✅ Task Completed</h2>
+        <p><strong>Task:</strong> ${title}</p>
+        <p><strong>Prompt:</strong></p>
+        <pre style="background:#f5f5f5;padding:10px;border-radius:5px;overflow:auto">${prompt}</pre>
+        <p><strong>AI Response:</strong></p>
+        <pre style="background:#f5f5f5;padding:10px;border-radius:5px;overflow:auto">${response}</pre>
+        <p><small>Generated by TaskPilot at ${new Date().toISOString()}</small></p>
+      </body>
+    </html>`;
+  }
+
+  buildWhatsAppMessage(title, response) {
+    const preview = response.length > 500 ? response.substring(0, 500) + '...' : response;
+    return `✅ *TaskPilot* — Task Complete\n\n*${title}*\n\n${preview}`;
+  }
+
+  /**
+   * Get execution status
+   */
+  getExecutionStatus(executionId) {
+    return this.executing[executionId] || null;
+  }
+
+  /**
+   * Retry failed execution
+   */
+  async retryExecution(executionId, task) {
+    console.log(`[Execution] Retrying execution ${executionId}`);
+    return this.executeTask(task);
+  }
+}
+
+module.exports = new ExecutionService();

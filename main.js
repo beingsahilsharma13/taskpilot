@@ -12,6 +12,7 @@ let aiEngine;
 let whatsapp;
 let emailService;
 let webhookServer;
+let executionService;
 
 // ── Create the main window ────────────────────────────────────
 function createWindow() {
@@ -30,9 +31,18 @@ function createWindow() {
     show: false
   });
 
+  // Load main app
   mainWindow.loadFile(path.join(__dirname, 'src/ui/index.html'));
-
   mainWindow.once('ready-to-show', () => mainWindow.show());
+
+  // Create dashboard window (accessible via menu or button)
+  global.openDashboard = () => {
+    const dashWindow = new BrowserWindow({
+      width: 1400, height: 900,
+      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+    });
+    dashWindow.loadFile(path.join(__dirname, 'src/ui/dashboard.html'));
+  };
 }
 
 // ── App init ──────────────────────────────────────────────────
@@ -44,6 +54,7 @@ app.whenReady().then(async () => {
   whatsapp = require('./src/backend/whatsapp');
   emailService = require('./src/backend/email');
   webhookServer = require('./src/webhook/server');
+  executionService = require('./src/services/executionService');
 
   // Start webhook server
   await webhookServer.startServer();
@@ -88,6 +99,9 @@ app.whenReady().then(async () => {
   const rateLimiter = require('./src/backend/rateLimiter');
   rateLimiter.on('limited', (data) => { if (mainWindow) mainWindow.webContents.send('rate:limited', data); });
   rateLimiter.on('resumed', (data) => { if (mainWindow) mainWindow.webContents.send('rate:resumed', data); });
+
+  // Setup dashboard handlers
+  require('./src/ipc/dashboardHandlers')();
 
   createWindow();
 });

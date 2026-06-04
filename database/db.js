@@ -54,6 +54,39 @@ db.exec(`
     detail TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS executions (
+    id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    prompt TEXT,
+    ai_response TEXT,
+    ai_provider TEXT,
+    duration_ms INTEGER,
+    status TEXT,
+    error TEXT,
+    delivery_status TEXT,
+    executed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(task_id) REFERENCES tasks(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS delivery_logs (
+    id TEXT PRIMARY KEY,
+    execution_id TEXT NOT NULL,
+    mode TEXT,
+    status TEXT,
+    message TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(execution_id) REFERENCES executions(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS system_logs (
+    id TEXT PRIMARY KEY,
+    level TEXT,
+    service TEXT,
+    message TEXT,
+    stacktrace TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // ── Helper functions ──────────────────────────────────────────
@@ -152,7 +185,100 @@ const dbHelpers = {
     return db.prepare(
       'SELECT * FROM run_logs WHERE task_id = ? ORDER BY created_at DESC'
     ).all(taskId);
+  },
+
+  // Execution history
+  logExecution: (execution) => {
+    const { v4: uuidv4 } = require('uuid');
+    return db.prepare(`
+      INSERT INTO executions (id, task_id, prompt, ai_response, ai_provider, duration_ms, status, error, delivery_status, executed_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      execution.id || uuidv4(),
+      execution.taskId,
+      execution.prompt,
+      execution.aiResponse,
+      execution.aiProvider,
+      execution.duration,
+      execution.status,
+      execution.error || null,
+      JSON.stringify(execution.deliveryStatus || {}),
+      execution.executedAt || new Date().toISOString()
+    );
+  },
+
+  getExecutionHistory: (taskId, limit = 10) => {
+    return db.prepare(
+      'SELECT * FROM executions WHERE task_id = ? ORDER BY executed_at DESC LIMIT ?'
+    ).all(taskId, limit);
+  },
+
+  getAllExecutions: (limit = 100) => {
+    return db.prepare(
+      'SELECT * FROM executions ORDER BY executed_at DESC LIMIT ?'
+    ).all(limit);
+  },
+
+  logDelivery: (executionId, mode, status, message) => {
+    const { v4: uuidv4 } = require('uuid');
+    return db.prepare(`
+      INSERT INTO delivery_logs (id, execution_id, mode, status, message)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(uuidv4(), executionId, mode, status, message);
+  },
+
+  getDeliveryStatus: (executionId) => {
+    return db.prepare(
+      'SELECT * FROM delivery_logs WHERE execution_id = ? ORDER BY created_at ASC'
+    ).all(executionId);
+  },
+
+  // System logging
+  logSystem: (level, service, message, stacktrace = null) => {
+    const { v4: uuidv4 } = require('uuid');
+    return db.prepare(`
+      INSERT INTO system_logs (id, level, service, message, stacktrace)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(uuidv4(), level, service, message, stacktrace);
+  },
+
+  getSystemLogs: (limit = 100, level = null) => {
+    if (level) {
+      return db.prepare(
+        'SELECT * FROM system_logs WHERE level = ? ORDER BY created_at DESC LIMIT ?'
+      ).all(level, limit);
+    }
+    return db.prepare(
+      'SELECT * FROM system_logs ORDER BY created_at DESC LIMIT ?'
+    ).all(limit);
+  },
+
+  // Dashboard stats
+  getStats: () => {
+    const tasks = db.prepare('SELECT COUNT(*) as total FROM tasks').get();
+    const running = db.prepare("SELECT COUNT(*) as count FROM tasks WHERE status = 'running'").get();
+    const completed = db.prepare("SELECT COUNT(*) as count FROM tasks WHERE status IN ('completed', 'done')").get();
+    const failed = db.prepare("SELECT COUNT(*) as count FROM tasks WHERE status = 'failed'").get();
+    const executions = db.prepare('SELECT COUNT(*) as total, COUNT(CASE WHEN status = ? THEN 1 END) as successful FROM executions', 'completed').get();
+
+    return {
+      totalTasks: tasks.total,
+      runningTasks: running.count,
+      completedTasks: completed.count,
+      failedTasks: failed.count,
+      totalExecutions: executions.total,
+      successfulExecutions: executions.successful
+    };
+  },
+
+  // Cleanup old logs (for production)
+  cleanupOldLogs: (daysOld = 30) => {
+    const before = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000).toISOString();
+    const logs = db.prepare('DELETE FROM run_logs WHERE created_at < ?').run(before);
+    const sysLogs = db.prepare('DELETE FROM system_logs WHERE created_at < ?').run(before);
+    return { logsDeleted: logs.changes, sysLogsDeleted: sysLogs.changes };
   }
 };
 
+// Expose both db and helpers
 module.exports = { db, ...dbHelpers };
