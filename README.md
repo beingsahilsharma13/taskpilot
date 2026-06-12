@@ -122,3 +122,26 @@ When a message comes in: https://YOUR-NGROK-URL.ngrok-free.app/webhook/whatsapp
 - **Nodemailer** — email fallback
 
 ## Built with ❤️ by Sahil Sharma
+
+---
+
+## 🌐 NEW: Browser Mode (v3)
+
+Each task can now run in one of two modes:
+
+| Mode | What happens |
+|---|---|
+| ⚡ **API** | Claude **Fable 5** / ChatGPT runs the task automatically in the background |
+| 🌐 **Browser** | TaskPilot **opens claude.ai / chatgpt.com in your real browser**, copies the prompt to your clipboard — you paste it (Cmd+V), **watch the AI work live**, copy the response, and paste it back. TaskPilot then delivers it via WhatsApp/Email |
+
+Browser Mode flow:
+```
+Run Task → claude.ai opens → Cmd+V (prompt auto-copied) → watch AI work
+→ Cmd+C the response → paste into TaskPilot → delivered to WhatsApp/Email ✅
+```
+
+## 🤖 Claude Fable 5
+
+TaskPilot now runs on **Claude Fable 5** (`claude-fable-5`) — Anthropic's newest
+and most intelligent model. If your API key doesn't have Fable 5 access yet,
+the app automatically falls back to Claude Sonnet 4.6, so nothing breaks.

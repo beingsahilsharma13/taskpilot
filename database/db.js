@@ -89,6 +89,11 @@ db.exec(`
   );
 `);
 
+// ── Migrations (safe to run on every start) ──────────────────
+// Adds exec_mode column: 'api' (automatic) | 'browser' (visual)
+try { db.exec("ALTER TABLE tasks ADD COLUMN exec_mode TEXT DEFAULT 'api'"); }
+catch (e) { /* column already exists — fine */ }
+
 // ── Helper functions ──────────────────────────────────────────
 
 const dbHelpers = {
@@ -117,12 +122,13 @@ const dbHelpers = {
   // Tasks
   createTask: (task) => {
     return db.prepare(`
-      INSERT INTO tasks (id, list_id, position, title, prompt, ai_provider, ai_model, use_prev_context, notify_channel)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO tasks (id, list_id, position, title, prompt, ai_provider, ai_model, use_prev_context, notify_channel, exec_mode)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       task.id, task.listId, task.position, task.title,
       task.prompt, task.aiProvider || 'claude', task.aiModel || null,
-      task.usePrevContext ? 1 : 0, task.notifyChannel || 'whatsapp'
+      task.usePrevContext ? 1 : 0, task.notifyChannel || 'whatsapp',
+      task.execMode || 'api'
     );
   },
 
@@ -259,7 +265,7 @@ const dbHelpers = {
     const running = db.prepare("SELECT COUNT(*) as count FROM tasks WHERE status = 'running'").get();
     const completed = db.prepare("SELECT COUNT(*) as count FROM tasks WHERE status IN ('completed', 'done')").get();
     const failed = db.prepare("SELECT COUNT(*) as count FROM tasks WHERE status = 'failed'").get();
-    const executions = db.prepare('SELECT COUNT(*) as total, COUNT(CASE WHEN status = ? THEN 1 END) as successful FROM executions', 'completed').get();
+    const executions = db.prepare("SELECT COUNT(*) as total, COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful FROM executions").get();
 
     return {
       totalTasks: tasks.total,

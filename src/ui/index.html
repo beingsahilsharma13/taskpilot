@@ -251,6 +251,10 @@ select.mini-select:focus{border-color:var(--border2)}
           <option value="claude">Claude</option>
           <option value="openai">ChatGPT</option>
         </select>
+        <select class="mini-select" id="quick-mode">
+          <option value="api">API auto</option>
+          <option value="browser">Browser</option>
+        </select>
         <select class="mini-select" id="quick-channel">
           <option value="whatsapp">WhatsApp</option>
           <option value="email">Email</option>
@@ -380,22 +384,52 @@ select.mini-select:focus{border-color:var(--border2)}
       <div class="s-row">
         <label class="s-label">AI Provider</label>
         <select class="s-input" id="m-provider">
-          <option value="claude">Claude (Anthropic)</option>
+          <option value="claude">Claude — Fable 5</option>
           <option value="openai">ChatGPT (OpenAI)</option>
         </select>
       </div>
       <div class="s-row">
-        <label class="s-label">Send result via</label>
-        <select class="s-input" id="m-channel">
-          <option value="whatsapp">WhatsApp</option>
-          <option value="email">Email</option>
+        <label class="s-label">Execution Mode</label>
+        <select class="s-input" id="m-mode">
+          <option value="api">⚡ API — automatic</option>
+          <option value="browser">🌐 Browser — watch the AI work</option>
         </select>
       </div>
+    </div>
+    <div class="s-row">
+      <label class="s-label">Send result via</label>
+      <select class="s-input" id="m-channel">
+        <option value="whatsapp">WhatsApp</option>
+        <option value="email">Email</option>
+        <option value="both">Both</option>
+      </select>
     </div>
     <label class="ctx-check" style="margin-top:8px"><input type="checkbox" id="m-context"/><span>Pass previous task's response as context (for linked tasks)</span></label>
     <div class="modal-actions">
       <button class="m-cancel" onclick="closeModal()">Cancel</button>
       <button class="m-ok" onclick="saveTask()">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- BROWSER MODE: PASTE RESPONSE -->
+<div class="modal-bg" id="browser-modal" style="display:none">
+  <div class="modal" style="max-width:600px">
+    <h2>🌐 <span id="browser-url">Claude.ai</span> is open — waiting for the response</h2>
+    <div style="background:var(--card);padding:14px;border-radius:8px;margin:14px 0">
+      <p style="margin:0 0 8px 0;color:var(--muted);font-size:11px;letter-spacing:0.06em">WHAT TO DO</p>
+      <ol style="margin:0;padding-left:18px;color:var(--text);font-size:13px;line-height:1.9">
+        <li>Your prompt is already <strong>copied to clipboard</strong> ✅</li>
+        <li>Go to the browser tab that just opened</li>
+        <li>Paste it: <strong>Cmd+V</strong> → submit</li>
+        <li>Watch the AI work ✨ then copy the full response: <strong>Cmd+C</strong></li>
+        <li>Come back and paste it below 👇</li>
+      </ol>
+    </div>
+    <textarea id="response-input" style="width:100%;min-height:150px;padding:10px;background:var(--card);border:1px solid var(--border2);color:var(--text);border-radius:7px;font-family:var(--mono);font-size:12px;resize:vertical" placeholder="Paste the AI response here…"></textarea>
+    <div class="modal-actions">
+      <button class="m-cancel" onclick="closeBrowserModal()">⏭ Skip Task</button>
+      <button class="m-ok" onclick="saveBrowserResponse()">✅ Use This Response</button>
     </div>
   </div>
 </div>
@@ -473,6 +507,7 @@ function openAddModal() {
   document.getElementById('m-prompt').value = '';
   document.getElementById('m-provider').value = document.getElementById('quick-provider').value;
   document.getElementById('m-channel').value = document.getElementById('quick-channel').value;
+  document.getElementById('m-mode').value = document.getElementById('quick-mode').value;
   document.getElementById('m-context').checked = false;
   document.getElementById('add-modal').style.display = 'flex';
   setTimeout(() => document.getElementById(titleEl.value ? 'm-prompt' : 'm-title').focus(), 80);
@@ -484,17 +519,21 @@ async function saveTask() {
   const title  = document.getElementById('m-title').value.trim();
   const prompt = document.getElementById('m-prompt').value.trim();
   if (!title || !prompt) { toast('Title and prompt required', 'err'); return; }
+  const execMode = document.getElementById('m-mode').value;
   await api.createTask({
     listId, position: tasks.length + 1, title, prompt,
     aiProvider:    document.getElementById('m-provider').value,
     notifyChannel: document.getElementById('m-channel').value,
     usePrevContext: document.getElementById('m-context').checked,
+    execMode,
   });
   document.getElementById('new-task-title').value = '';
   closeModal();
   tasks = await api.getTasksForList(listId);
   renderTasks();
-  toast('Task added!', 'ok');
+  toast(execMode === 'browser'
+    ? '🌐 Browser task added! Click Run — Claude/ChatGPT will open for you.'
+    : '✅ Task added!', 'ok');
 }
 
 async function delTask(id) {
@@ -547,6 +586,27 @@ async function sendModify() {
   if (!val) { toast('Type your modification first', 'err'); return; }
   await api.sendConfirmation('modify', val);
   hideConfirmBanner();
+}
+
+// ── BROWSER MODE ──────────────────────────────────────────────
+function showBrowserModal(d) {
+  document.getElementById('browser-url').textContent = d.provider === 'openai' ? 'ChatGPT' : 'Claude.ai';
+  document.getElementById('response-input').value = '';
+  document.getElementById('browser-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('response-input').focus(), 150);
+}
+
+async function closeBrowserModal() {
+  document.getElementById('browser-modal').style.display = 'none';
+  await api.cancelBrowserTask();   // skips this task — the queue moves on
+}
+
+async function saveBrowserResponse() {
+  const response = document.getElementById('response-input').value.trim();
+  if (!response) { toast('Paste the AI response first', 'err'); return; }
+  document.getElementById('browser-modal').style.display = 'none';
+  await api.submitBrowserResponse(response);
+  toast('✅ Response captured — delivering…', 'ok');
 }
 
 // ── ACTIVITY FEED ─────────────────────────────────────────────
@@ -636,6 +696,15 @@ function setupEvents() {
   api.on('confirmation', d => {
     addFeedEvent({ icon:'💬', iconClass:'purple', title:`WhatsApp reply: ${d.action}`, detail:d.instruction || '' });
   });
+
+  api.on('task:browser_waiting', d => {
+    showBrowserModal(d);
+    const name = d.provider === 'openai' ? 'ChatGPT' : 'Claude.ai';
+    addFeedEvent({ icon:'🌐', iconClass:'blue', title:`${name} opened in your browser`, detail:'Prompt copied — paste it there (Cmd+V), then paste the response back here' });
+    setStatus('running', 'Waiting for browser response…');
+  });
+
+  api.on('queue:warn', d => toast(d.message, 'err'));
 }
 
 // ── TABS ──────────────────────────────────────────────────────
@@ -708,23 +777,9 @@ async function chatSend() {
   el.appendChild(typDiv); el.scrollTop = el.scrollHeight;
 
   try {
-    let reply = '';
-    if (chatAI === 'claude') {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1024,
-          system: 'You are a helpful AI assistant inside TaskPilot, a daily task automation app. Be concise and helpful.',
-          messages: chatHistory[chatAI]
-        })
-      });
-      const data = await res.json();
-      reply = data.content?.[0]?.text || 'No response.';
-    } else {
-      reply = 'ChatGPT needs your OpenAI API key. Add it in Settings → OpenAI API Key, then it will work here just like Claude!';
-    }
+    // Chat goes through the app backend → uses your saved API key
+    // Claude model: Claude Fable 5 (auto-fallback if unavailable)
+    const reply = await api.chatSend(chatAI, chatHistory[chatAI]);
     typDiv.remove();
     chatHistory[chatAI].push({ role: 'assistant', content: reply });
     el.appendChild(makeMsgEl('assistant', reply));

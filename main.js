@@ -85,10 +85,11 @@ app.whenReady().then(async () => {
 
   // Forward queue events to renderer
   const queueEvents = [
-    'task:started', 'task:response', 'task:done', 'task:failed',
-    'task:waiting_confirm', 'task:skipped', 'task:modified',
-    'list:started', 'list:completed', 'queue:paused', 'queue:resumed',
-    'confirmation:received', 'error'
+    'task:started', 'task:response', 'task:waiting', 'task:done', 'task:failed',
+    'task:skipped', 'task:modified', 'task:browser_waiting',
+    'list:started', 'list:completed',
+    'queue:paused', 'queue:resumed', 'queue:stopped', 'queue:warn', 'queue:error',
+    'confirmation'
   ];
   queueEvents.forEach(event => {
     taskQueue.on(event, (data) => {
@@ -145,8 +146,23 @@ ipcMain.handle('queue:pause', () => { taskQueue.pause(); return { paused: true }
 ipcMain.handle('queue:resume', () => { taskQueue.resume(); return { resumed: true }; });
 ipcMain.handle('queue:stop', () => { taskQueue.stop(); return { stopped: true }; });
 ipcMain.handle('queue:confirm', (_, action, instruction) => {
-  taskQueue.handleIncomingMessage(action === 'modify' ? `MODIFY ${instruction}` : action.toUpperCase());
+  taskQueue.handleReply(action === 'modify' ? `MODIFY ${instruction}` : action.toUpperCase());
   return { ok: true };
+});
+
+// Browser Mode: user pasted the AI response (null = skip the task)
+ipcMain.handle('queue:browserResponse', (_, response) => {
+  taskQueue.handleBrowserResponse(response);
+  return { ok: true };
+});
+ipcMain.handle('queue:browserCancel', () => {
+  taskQueue.handleBrowserResponse(null);
+  return { ok: true };
+});
+
+// In-app Chat tab → Claude Fable 5 / ChatGPT using the saved API keys
+ipcMain.handle('chat:send', async (_, provider, messages) => {
+  return await aiEngine.chat(provider, messages);
 });
 
 // Settings

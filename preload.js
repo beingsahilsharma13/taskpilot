@@ -21,6 +21,11 @@ contextBridge.exposeInMainWorld('taskpilot', {
   resumeQueue: () => ipcRenderer.invoke('queue:resume'),
   stopQueue: () => ipcRenderer.invoke('queue:stop'),
   sendConfirmation: (action, instruction) => ipcRenderer.invoke('queue:confirm', action, instruction),
+  submitBrowserResponse: (response) => ipcRenderer.invoke('queue:browserResponse', response),
+  cancelBrowserTask: () => ipcRenderer.invoke('queue:browserCancel'),
+
+  // ── Chat (Claude Fable 5 / ChatGPT) ─────────────────────────
+  chatSend: (provider, messages) => ipcRenderer.invoke('chat:send', provider, messages),
 
   // ── Settings ─────────────────────────────────────────────
   getSettings: () => ipcRenderer.invoke('settings:getAll'),
@@ -30,12 +35,12 @@ contextBridge.exposeInMainWorld('taskpilot', {
   // ── Events from backend → UI ─────────────────────────────
   on: (channel, callback) => {
     const validChannels = [
-      'task:started', 'task:response', 'task:done', 'task:failed',
-      'task:waiting_confirm', 'task:skipped', 'task:modified',
+      'task:started', 'task:response', 'task:waiting', 'task:done', 'task:failed',
+      'task:skipped', 'task:modified', 'task:browser_waiting',
       'list:started', 'list:completed',
-      'queue:paused', 'queue:resumed',
+      'queue:paused', 'queue:resumed', 'queue:stopped', 'queue:warn', 'queue:error',
       'rate:limited', 'rate:resumed',
-      'confirmation:received', 'error'
+      'confirmation', 'error'
     ];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (_, data) => callback(data));

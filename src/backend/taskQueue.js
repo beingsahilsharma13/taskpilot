@@ -1,22 +1,34 @@
+/**
+ * Task Queue Engine — runs the daily list one task at a time.
+ *
+ * Two execution modes per task:
+ *   api     → calls Claude (Fable 5) / OpenAI API directly. Fast, automatic.
+ *   browser → opens Claude.ai / ChatGPT.com in the real browser. The prompt
+ *             is copied to the clipboard, the user pastes it, WATCHES the AI
+ *             work, then pastes the response back into TaskPilot.
+ *
+ * After every task: result is delivered (WhatsApp / Email / both),
+ * then the queue waits for CONFIRM / MODIFY / SKIP / PAUSE.
+ */
 const EventEmitter = require("events");
-const { v4: uuidv4 } = require("uuid");
 
-function db()        { return require("../../database/db"); }
-function ai()        { return require("./aiEngine"); }
-function whatsapp()  { return require("./whatsapp"); }
-function email()     { return require("./email"); }
-function limiter()   { return require("./rateLimiter"); }
+function db()       { return require("../../database/db"); }
+function ai()       { return require("./aiEngine"); }
+function whatsapp() { return require("./whatsapp"); }
+function email()    { return require("./email"); }
+function browser()  { return require("../services/browserAutomation"); }
 
 class TaskQueueEngine extends EventEmitter {
   constructor() {
     super();
-    this.running   = false;
-    this.paused    = false;
-    this.listId    = null;
-    this.resolver  = null; // resolves when user confirms on WhatsApp
+    this.running = false;
+    this.paused  = false;
+    this.listId  = null;
+    this.resolver        = null; // waits for CONFIRM/SKIP/MODIFY/PAUSE
+    this.resumeResolver  = null; // waits for resume after pause
+    this.browserResolver = null; // waits for the pasted browser response
   }
 
-  // ── PUBLIC: Start running a list ───────────────────────────
   async start(listId) {
     if (this.running) throw new Error("Queue already running");
     const list = db().getList(listId);
@@ -40,10 +52,10 @@ class TaskQueueEngine extends EventEmitter {
     }
   }
 
-  // ── INTERNAL: Run next pending task ────────────────────────
   async _runNext(listId, prevResponse) {
-    const task = db().getNextPendingTask(listId);
+    if (!this.running) return;
 
+    const task = db().getNextPendingTask(listId);
     if (!task) {
       db().updateListStatus(listId, "completed");
       const list = db().getList(listId);
@@ -52,7 +64,6 @@ class TaskQueueEngine extends EventEmitter {
       return;
     }
 
-    // If paused — wait until resume is called
     if (this.paused) {
       this.emit("queue:paused", { taskId: task.id });
       await this._waitForResume();
@@ -63,36 +74,61 @@ class TaskQueueEngine extends EventEmitter {
     const position = task.position;
     const total    = allTasks.length;
     const list     = db().getList(listId);
+    const mode     = (task.exec_mode || "api").toLowerCase();
 
     db().updateTaskStatus(task.id, "running");
-    this.emit("task:started", { taskId: task.id, title: task.title, position, total });
-    db().log(task.id, "STARTED", `provider=${task.ai_provider}`);
+    this.emit("task:started", { taskId: task.id, title: task.title, position, total, mode });
+    db().log(task.id, "STARTED", `provider=${task.ai_provider} mode=${mode}`);
 
     try {
-      // ── 1. Call AI ─────────────────────────────────────────
       const context = task.use_prev_context ? prevResponse : null;
-      const aiResponse = await ai().run(task, context);
+      let aiResponse;
+
+      if (mode === "browser") {
+        // ── BROWSER MODE: the user watches the AI work ────────
+        const fullPrompt = context
+          ? `Context from previous task:\n\n${context}\n\n---\n\nNew task:\n${task.prompt}`
+          : task.prompt;
+
+        const info = browser().open(task.ai_provider, fullPrompt);
+        db().log(task.id, "BROWSER_OPENED", info.url);
+        this.emit("task:browser_waiting", {
+          taskId: task.id, title: task.title,
+          provider: task.ai_provider, url: info.url, position, total,
+        });
+
+        aiResponse = await this._waitForBrowserResponse();
+        if (!this.running) return;
+
+        if (aiResponse === null) {
+          // user closed the paste window → skip this task
+          db().updateTaskStatus(task.id, "skipped");
+          db().log(task.id, "SKIPPED", "browser task cancelled by user");
+          this.emit("task:skipped", { taskId: task.id });
+          await this._runNext(listId, prevResponse);
+          return;
+        }
+      } else {
+        // ── API MODE: fully automatic ─────────────────────────
+        aiResponse = await ai().run(task, context);
+      }
 
       db().updateTaskStatus(task.id, "waiting_confirm", aiResponse);
       db().log(task.id, "AI_DONE", aiResponse.substring(0, 200));
       this.emit("task:response", { taskId: task.id, response: aiResponse, position, total });
 
-      // ── 2. Notify user (WhatsApp / email) ──────────────────
       await this._notify(task, aiResponse, position, total, list.name);
 
-      // ── 3. Wait for user confirmation ──────────────────────
       this.emit("task:waiting", { taskId: task.id });
       const confirm = await this._waitForConfirm();
 
-      // ── 4. Handle user reply ───────────────────────────────
       if (confirm.action === "confirm") {
         db().updateTaskStatus(task.id, "done");
         db().log(task.id, "CONFIRMED");
         this.emit("task:done", { taskId: task.id });
-        await this._runNext(listId, aiResponse); // pass response as context for next
+        await this._runNext(listId, aiResponse); // pass response as context
 
       } else if (confirm.action === "modify") {
-        // Re-run same task with user's modification appended
         db().updateTask(task.id, {
           status: "pending",
           prompt: `${task.prompt}\n\nUser instruction: ${confirm.instruction}`,
@@ -129,82 +165,103 @@ class TaskQueueEngine extends EventEmitter {
     }
   }
 
-  // ── Send to WhatsApp or Email ───────────────────────────────
+  // Deliver the result via the channel(s) chosen on the task
   async _notify(task, response, position, total, listName) {
     const wa = whatsapp();
     const em = email();
-    if (wa.isReady()) {
+    const channel = (task.notify_channel || "whatsapp").toLowerCase();
+    const wantWa  = channel === "whatsapp" || channel === "both";
+    const wantEm  = channel === "email"    || channel === "both";
+    let sent = false;
+
+    if (wantWa && wa.isReady()) {
       await wa.sendTaskResult({ taskTitle: task.title, aiResponse: response, position, total, listName });
-    } else if (em.isReady()) {
-      await em.sendTaskResult(task.title, response, position, total, "http://localhost:3456/confirm");
-    } else {
+      sent = true;
+    }
+    if (wantEm && em.isReady()) {
+      await em.sendTaskResult(task.title, task.prompt, response, position, total);
+      sent = true;
+    }
+
+    // Fallback: chosen channel not configured → use whatever IS configured
+    if (!sent) {
+      if (wa.isReady()) {
+        await wa.sendTaskResult({ taskTitle: task.title, aiResponse: response, position, total, listName });
+        sent = true;
+      } else if (em.isReady()) {
+        await em.sendTaskResult(task.title, task.prompt, response, position, total);
+        sent = true;
+      }
+    }
+
+    if (!sent) {
       console.warn("[Queue] No notification channel configured!");
-      this.emit("queue:warn", { message: "No WhatsApp/Email configured. Confirm in the app." });
+      this.emit("queue:warn", { message: "No WhatsApp/Email configured — confirm in the app." });
     }
   }
 
-  // ── Wait for WhatsApp confirmation (returns Promise) ────────
-  _waitForConfirm() {
-    return new Promise(resolve => { this.resolver = resolve; });
+  _waitForConfirm()         { return new Promise(r => { this.resolver = r; }); }
+  _waitForResume()          { return new Promise(r => { this.resumeResolver = r; }); }
+  _waitForBrowserResponse() { return new Promise(r => { this.browserResolver = r; }); }
+
+  // Called from the UI when the user pastes the browser response (null = skip)
+  handleBrowserResponse(responseText) {
+    console.log(`[Queue] Browser response: ${responseText ? responseText.length + " chars" : "cancelled"}`);
+    if (this.browserResolver) {
+      this.browserResolver(responseText);
+      this.browserResolver = null;
+    }
   }
 
-  _waitForResume() {
-    return new Promise(resolve => { this.resumeResolver = resolve; });
-  }
-
-  // ── Called by webhook server when user replies on WhatsApp ──
+  // Called by the webhook server / in-app buttons (CONFIRM, SKIP, MODIFY…)
   handleReply(messageBody) {
-    const parsed = require("./whatsapp").constructor
-      ? { action: "unknown" }
-      : {};
-
-    // Parse inline since we can't call static easily
-    const t = (messageBody || "").trim();
+    const t  = (messageBody || "").trim();
     const up = t.toUpperCase();
     let result;
-    if (up === "CONFIRM")          result = { action: "confirm" };
-    else if (up === "SKIP")        result = { action: "skip" };
-    else if (up === "PAUSE")       result = { action: "pause" };
-    else if (up === "STOP")        result = { action: "stop" };
+    if (up === "CONFIRM")              result = { action: "confirm" };
+    else if (up === "SKIP")            result = { action: "skip" };
+    else if (up === "PAUSE")           result = { action: "pause" };
+    else if (up === "STOP")            result = { action: "stop" };
     else if (up.startsWith("MODIFY ")) result = { action: "modify", instruction: t.substring(7).trim() };
-    else                           result = { action: "unknown", raw: t };
+    else                               result = { action: "unknown", raw: t };
 
     console.log(`[Queue] Reply received: ${result.action}`);
     this.emit("confirmation", result);
 
-    if (result.action === "pause") {
-      this.paused = true;
-    } else if (result.action === "stop") {
-      this.running = false;
-    }
+    if (result.action === "pause")     this.paused = true;
+    else if (result.action === "stop") this.running = false;
 
     if (this.resolver) {
       this.resolver(result);
       this.resolver = null;
     }
-
-    // If paused and user sends CONFIRM/SKIP, resume
     if (this.paused && (result.action === "confirm" || result.action === "skip")) {
       this.paused = false;
-      if (this.resumeResolver) {
-        this.resumeResolver();
-        this.resumeResolver = null;
-      }
+      if (this.resumeResolver) { this.resumeResolver(); this.resumeResolver = null; }
     }
   }
 
-  // ── External controls ───────────────────────────────────────
-  pause()  { this.paused = true; if (this.resolver) { this.resolver({ action: "pause" }); this.resolver = null; } }
+  // Backwards-compatible alias (older code called this name)
+  handleIncomingMessage(messageBody) { return this.handleReply(messageBody); }
+
+  pause() {
+    this.paused = true;
+    if (this.resolver) { this.resolver({ action: "pause" }); this.resolver = null; }
+  }
+
   resume() {
     this.paused = false;
     this.emit("queue:resumed");
     if (this.resumeResolver) { this.resumeResolver(); this.resumeResolver = null; }
     if (this.resolver)       { this.resolver({ action: "confirm" }); this.resolver = null; }
   }
-  stop()   {
-    this.running = false; this.paused = false;
-    if (this.resolver)      { this.resolver({ action: "stop" }); this.resolver = null; }
-    if (this.resumeResolver){ this.resumeResolver(); this.resumeResolver = null; }
+
+  stop() {
+    this.running = false;
+    this.paused  = false;
+    if (this.resolver)        { this.resolver({ action: "stop" }); this.resolver = null; }
+    if (this.resumeResolver)  { this.resumeResolver(); this.resumeResolver = null; }
+    if (this.browserResolver) { this.browserResolver(null); this.browserResolver = null; }
     this.emit("queue:stopped");
   }
 
