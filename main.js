@@ -1,179 +1,81 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+const { spawn } = require('child_process');
 
-// Load .env file if present (used for pre-configured API keys)
-try { require('dotenv').config({ path: path.join(__dirname, '.env') }); } catch(e) {}
+let win;
+let worker = null;
 
-let mainWindow;
-let db;
-let taskQueue;
-let aiEngine;
-let whatsapp;
-let emailService;
-let webhookServer;
-let executionService;
+const CONFIG_PATH = () => path.join(app.getPath('userData'), 'config.json');
+const SESSION_DIR = () => path.join(app.getPath('userData'), 'claude-session');
 
-// ── Create the main window ────────────────────────────────────
-function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1200, height: 800,
-    minWidth: 900, minHeight: 600,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
-    },
-    titleBarStyle: 'hidden',
-    trafficLightPosition: { x: 16, y: 16 },
-    backgroundColor: '#0f0f14',
-    icon: path.join(__dirname, 'src/ui/assets/icon.png'),
-    show: false
-  });
-
-  // Load main app
-  mainWindow.loadFile(path.join(__dirname, 'src/ui/index.html'));
-  mainWindow.once('ready-to-show', () => mainWindow.show());
-
-  // Create dashboard window (accessible via menu or button)
-  global.openDashboard = () => {
-    const dashWindow = new BrowserWindow({
-      width: 1400, height: 900,
-      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
-    });
-    dashWindow.loadFile(path.join(__dirname, 'src/ui/dashboard.html'));
-  };
+function loadConfig() {
+  try { return JSON.parse(fs.readFileSync(CONFIG_PATH(), 'utf8')); }
+  catch { return {}; }
+}
+function saveConfig(cfg) {
+  fs.writeFileSync(CONFIG_PATH(), JSON.stringify(cfg, null, 2));
 }
 
-// ── App init ──────────────────────────────────────────────────
-app.whenReady().then(async () => {
-  // Lazy load backend modules after app is ready (so app.getPath works)
-  db = require('./database/db');
-  taskQueue = require('./src/backend/taskQueue');
-  aiEngine = require('./src/backend/aiEngine');
-  whatsapp = require('./src/backend/whatsapp');
-  emailService = require('./src/backend/email');
-  webhookServer = require('./src/webhook/server');
-  executionService = require('./src/services/executionService');
-
-  // Start webhook server
-  await webhookServer.startServer();
-
-  // Init AI services — DB settings first, env vars as fallback
-  const settings = db.getAllSettings();
-  const claudeKey = settings.claudeApiKey || process.env.CLAUDE_API_KEY;
-  const openaiKey = settings.openaiApiKey || process.env.OPENAI_API_KEY;
-  if (claudeKey || openaiKey) {
-    aiEngine.init(claudeKey, openaiKey);
-    // Persist to DB if came from env
-    if (!settings.claudeApiKey && claudeKey) db.setSetting('claudeApiKey', claudeKey);
-    if (!settings.openaiApiKey && openaiKey) db.setSetting('openaiApiKey', openaiKey);
-  }
-  const tSid   = settings.twilioSid   || process.env.TWILIO_ACCOUNT_SID;
-  const tToken = settings.twilioToken || process.env.TWILIO_AUTH_TOKEN;
-  const tFrom  = settings.twilioFrom  || process.env.TWILIO_WHATSAPP_FROM;
-  const waTo   = settings.whatsappTo  || process.env.YOUR_WHATSAPP_NUMBER;
-  if (tSid && tToken) {
-    whatsapp.init(tSid, tToken, tFrom, waTo);
-  }
-  const gmailUser = settings.gmailUser || process.env.GMAIL_USER;
-  const gmailPass = settings.gmailPass || process.env.GMAIL_APP_PASSWORD;
-  const emailTo   = settings.emailTo   || process.env.NOTIFY_EMAIL;
-  if (gmailUser && gmailPass) {
-    emailService.init(gmailUser, gmailPass, emailTo);
-  }
-
-  // Forward queue events to renderer
-  const queueEvents = [
-    'task:started', 'task:response', 'task:waiting', 'task:done', 'task:failed',
-    'task:skipped', 'task:modified', 'task:browser_waiting',
-    'list:started', 'list:completed',
-    'queue:paused', 'queue:resumed', 'queue:stopped', 'queue:warn', 'queue:error',
-    'confirmation'
-  ];
-  queueEvents.forEach(event => {
-    taskQueue.on(event, (data) => {
-      if (mainWindow) mainWindow.webContents.send(event, data);
-    });
+function createWindow() {
+  win = new BrowserWindow({
+    width: 880, height: 760, minWidth: 640, minHeight: 560,
+    backgroundColor: '#0f0f14',
+    titleBarStyle: 'hidden',
+    trafficLightPosition: { x: 14, y: 14 },
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true, nodeIntegration: false
+    }
   });
+  win.loadFile(path.join(__dirname, 'src/ui/index.html'));
+}
 
-  const rateLimiter = require('./src/backend/rateLimiter');
-  rateLimiter.on('limited', (data) => { if (mainWindow) mainWindow.webContents.send('rate:limited', data); });
-  rateLimiter.on('resumed', (data) => { if (mainWindow) mainWindow.webContents.send('rate:resumed', data); });
-
-  // Setup dashboard handlers
-  require('./src/ipc/dashboardHandlers')();
-
-  createWindow();
-});
-
+app.whenReady().then(createWindow);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('before-quit', () => { if (webhookServer) webhookServer.stopServer(); });
+app.on('before-quit', () => { if (worker) try { worker.kill(); } catch {} });
 
-// ── IPC Handlers ──────────────────────────────────────────────
+// ── IPC ──
+ipcMain.handle('get-config', () => loadConfig());
+ipcMain.handle('save-config', (_, cfg) => { saveConfig(cfg); return { ok: true }; });
 
-// DB: Lists
-ipcMain.handle('db:getLists', () => db.getLists());
-ipcMain.handle('db:getList', (_, id) => db.getList(id));
-ipcMain.handle('db:createList', (_, name, description) => {
-  const id = uuidv4();
-  db.createList(id, name, description);
-  return db.getList(id);
-});
-ipcMain.handle('db:deleteList', (_, id) => db.deleteList(id));
+function runWorker(mode, tasks) {
+  if (worker) return { error: 'Already running' };
+  const cfg = loadConfig();
+  const payload = { mode, tasks: tasks || [], config: cfg, userDataDir: SESSION_DIR() };
 
-// DB: Tasks
-ipcMain.handle('db:getTasksForList', (_, listId) => db.getTasksForList(listId));
-ipcMain.handle('db:createTask', (_, task) => {
-  const id = uuidv4();
-  db.createTask({ ...task, id });
-  return db.getTask(id);
-});
-ipcMain.handle('db:updateTask', (_, id, fields) => {
-  db.updateTask(id, fields);
-  return db.getTask(id);
-});
-ipcMain.handle('db:deleteTask', (_, id) => db.deleteTask(id));
+  const tmp = path.join(app.getPath('userData'), 'run.json');
+  fs.writeFileSync(tmp, JSON.stringify(payload));
 
-// Queue
-ipcMain.handle('queue:start', (_, listId) => {
-  taskQueue.start(listId).catch(err => {
-    if (mainWindow) mainWindow.webContents.send('error', { message: err.message });
+  // Run the Playwright worker using Electron's bundled Node (no external node needed)
+  worker = spawn(process.execPath, [path.join(__dirname, 'src/worker.js'), tmp], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
   });
-  return { started: true };
-});
-ipcMain.handle('queue:pause', () => { taskQueue.pause(); return { paused: true }; });
-ipcMain.handle('queue:resume', () => { taskQueue.resume(); return { resumed: true }; });
-ipcMain.handle('queue:stop', () => { taskQueue.stop(); return { stopped: true }; });
-ipcMain.handle('queue:confirm', (_, action, instruction) => {
-  taskQueue.handleReply(action === 'modify' ? `MODIFY ${instruction}` : action.toUpperCase());
-  return { ok: true };
-});
 
-// Browser Mode: user pasted the AI response (null = skip the task)
-ipcMain.handle('queue:browserResponse', (_, response) => {
-  taskQueue.handleBrowserResponse(response);
+  let buf = '';
+  worker.stdout.on('data', d => {
+    buf += d.toString();
+    let nl;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, nl); buf = buf.slice(nl + 1);
+      if (line.startsWith('LOG::')) {
+        try { win.webContents.send('log', JSON.parse(line.slice(5))); } catch {}
+      } else if (line.trim()) {
+        win.webContents.send('log', { type: 'info', msg: line.trim() });
+      }
+    }
+  });
+  worker.stderr.on('data', d => {
+    win.webContents.send('log', { type: 'error', msg: d.toString().trim() });
+  });
+  worker.on('close', code => {
+    win.webContents.send('log', { type: 'closed', msg: `Worker finished (code ${code})` });
+    win.webContents.send('finished', { code });
+    worker = null;
+  });
   return { ok: true };
-});
-ipcMain.handle('queue:browserCancel', () => {
-  taskQueue.handleBrowserResponse(null);
-  return { ok: true };
-});
+}
 
-// In-app Chat tab → Claude Fable 5 / ChatGPT using the saved API keys
-ipcMain.handle('chat:send', async (_, provider, messages) => {
-  return await aiEngine.chat(provider, messages);
-});
-
-// Settings
-ipcMain.handle('settings:getAll', () => db.getAllSettings());
-ipcMain.handle('settings:save', (_, key, value) => { db.setSetting(key, value); return { ok: true }; });
-ipcMain.handle('settings:saveAll', (_, settings) => {
-  Object.entries(settings).forEach(([k, v]) => db.setSetting(k, v));
-  // Re-init services with new settings
-  const s = db.getAllSettings();
-  aiEngine.init(s.claudeApiKey, s.openaiApiKey);
-  if (s.twilioSid && s.twilioToken) whatsapp.init(s.twilioSid, s.twilioToken, s.twilioFrom, s.whatsappTo);
-  if (s.gmailUser && s.gmailPass) emailService.init(s.gmailUser, s.gmailPass, s.emailTo);
-  return { ok: true };
-});
+ipcMain.handle('login', () => runWorker('login-only', []));
+ipcMain.handle('run', (_, tasks) => runWorker('run', tasks));
+ipcMain.handle('stop', () => { if (worker) { try { worker.kill(); } catch {} worker = null; } return { ok: true }; });

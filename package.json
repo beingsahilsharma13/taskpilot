@@ -1,46 +1,20 @@
 {
   "name": "taskpilot",
-  "version": "1.0.0",
-  "description": "AI-powered task automation desktop app \u2014 run your todo list on autopilot with Claude & ChatGPT",
+  "version": "3.0.0",
+  "description": "Feed a list of prompts to Claude in a real browser, get each answer by Email or WhatsApp.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dev": "NODE_ENV=development electron .",
-    "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux",
-    "build:all": "electron-builder --mac --win --linux"
-  },
-  "build": {
-    "appId": "com.taskpilot.app",
-    "productName": "TaskPilot",
-    "directories": {
-      "output": "dist"
-    },
-    "mac": {
-      "category": "public.app-category.productivity"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.27.0",
-    "better-sqlite3": "^9.4.3",
-    "express": "^4.18.3",
-    "nodemailer": "^6.9.9",
-    "openai": "^4.47.0",
-    "twilio": "^5.2.0",
-    "uuid": "^9.0.1",
-    "dotenv": "^16.4.5"
-  },
-  "devDependencies": {
-    "electron": "^30.0.0",
-    "electron-builder": "^24.13.3"
+    "postinstall": "playwright install chromium"
   },
   "author": "Sahil Sharma",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "nodemailer": "^6.9.15",
+    "playwright": "^1.48.0",
+    "twilio": "^5.3.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0"
+  }
 }
